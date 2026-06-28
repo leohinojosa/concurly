@@ -8,9 +8,9 @@
   let scrollTimer = null;
   let activeTab = "review"; // "review" | "history"
 
-  const HEADER_H = 36;
+  const HEADER_H = 45;
   const TABS_H = 40;
-  const CHROME_H = HEADER_H + TABS_H; // 76px
+  const CHROME_H = HEADER_H + TABS_H; // 85px
 
   // ─── Selector builder ────────────────────────────────────────────────────
   function getSelector(el) {
@@ -37,15 +37,15 @@
   function injectStyles() {
     const style = document.createElement("style");
     style.textContent = `
-      body { padding-top: 76px !important; }
+      body { padding-top: 85px !important; }
 
       #__dr-sidebar__ {
-        position: fixed; top: 76px; right: 0; width: 320px; height: calc(100vh - 76px);
+        position: fixed; top: 85px; right: 0; width: 320px; height: calc(100vh - 85px);
         background: #fff; z-index: 999995; display: flex; flex-direction: column;
         box-shadow: -4px 0 24px rgba(0,0,0,0.12); font-family: system-ui, sans-serif;
         font-size: 13px; transition: transform 0.2s ease;
       }
-      #__dr-sidebar__.collapsed { transform: translateX(288px); }
+      #__dr-sidebar__.collapsed { transform: translateX(288px); cursor: pointer; }
       #__dr-sidebar-header__ {
         display: flex; justify-content: space-between; align-items: center;
         padding: 12px 16px; border-bottom: 1px solid #e5e7eb;
@@ -126,7 +126,7 @@
         transition: background-color 0.3s ease;
       }
       #__dr-header__ {
-        position: fixed; top: 0; left: 0; right: 0; height: 36px;
+        position: fixed; top: 0; left: 0; right: 0; height: 45px;
         background: #18181b; z-index: 999993;
         display: flex; align-items: center; padding: 0 16px; gap: 10px;
         font-family: system-ui, sans-serif; font-size: 12px;
@@ -142,8 +142,12 @@
         color: #71717a; font-size: 11px;
         overflow: hidden; text-overflow: ellipsis; min-width: 0;
       }
-      #__dr-header-github__ {
+      #__dr-header-version__ {
         margin-left: auto; flex-shrink: 0;
+        color: #52525b; font-size: 11px;
+      }
+      #__dr-header-github__ {
+        margin-left: 8px; flex-shrink: 0;
         color: #52525b; text-decoration: none;
         display: flex; align-items: center;
         opacity: 0.6; transition: opacity 0.15s, color 0.15s;
@@ -153,7 +157,7 @@
 
       /* ── Tab bar ─────────────────────────────────────────────────────────── */
       #__dr-tabs__ {
-        position: fixed; top: 36px; left: 0; right: 0; height: 40px;
+        position: fixed; top: 45px; left: 0; right: 0; height: 40px;
         background: #1c1c1f; z-index: 999994;
         display: flex; align-items: center; padding: 0 12px; gap: 2px;
         border-bottom: 1px solid #3f3f46; box-sizing: border-box;
@@ -170,7 +174,7 @@
 
       /* ── History panel ───────────────────────────────────────────────────── */
       #__dr-history-panel__ {
-        position: fixed; top: 76px; left: 0; right: 0; bottom: 0;
+        position: fixed; top: 85px; left: 0; right: 0; bottom: 0;
         background: #f9fafb; z-index: 999991;
         display: none; /* shown as flex by switchTab */
         font-family: system-ui, sans-serif;
@@ -265,6 +269,10 @@
     filepath.textContent = FILE_PATH;
     filepath.title = FILE_PATH;
 
+    const version = document.createElement("span");
+    version.id = "__dr-header-version__";
+    version.textContent = "v__VERSION__";
+
     const ghLink = document.createElement("a");
     ghLink.id = "__dr-header-github__";
     ghLink.href = "https://github.com/leohinojosa/concurly";
@@ -277,6 +285,7 @@
     header.appendChild(sep);
     header.appendChild(filename);
     header.appendChild(filepath);
+    header.appendChild(version);
     header.appendChild(ghLink);
 
     document.body.prepend(header);
@@ -491,7 +500,7 @@
     const collapseBtn = document.createElement("button");
     collapseBtn.id = "__dr-collapse__";
     collapseBtn.textContent = "✕";
-    collapseBtn.addEventListener("click", toggleSidebar);
+    collapseBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleSidebar(); });
 
     header.appendChild(title);
     header.appendChild(collapseBtn);
@@ -535,6 +544,12 @@
       sidebar.classList.add("collapsed");
       collapseBtn.textContent = "▶";
     }
+
+    sidebar.addEventListener("click", (e) => {
+      if (!sidebar.classList.contains("collapsed")) return;
+      e.stopPropagation();
+      openSidebar();
+    });
   }
 
   // ─── Sidebar open / collapse ──────────────────────────────────────────────

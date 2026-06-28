@@ -113,9 +113,12 @@ async function cmdOpen(args: string[]): Promise<void> {
     process.exit(1);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { version } = require(path.join(__dirname, "../package.json")) as { version: string };
   const portedScript = clientScript
     .replace('"__PORT__"', String(port))
-    .replace('"__FILE_PATH__"', JSON.stringify(htmlPath));
+    .replace('"__FILE_PATH__"', JSON.stringify(htmlPath))
+    .replace("__VERSION__", version);
 
   // Per-instance temp file so parallel sessions don't overwrite each other.
   const tmpClientPath = path.join(os.tmpdir(), `concurly-client-${port}.js`);
