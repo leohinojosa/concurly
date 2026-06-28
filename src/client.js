@@ -148,7 +148,7 @@
 
     const brand = document.createElement("span");
     brand.id = "__dr-header-brand__";
-    brand.textContent = "✨ concurly";
+    brand.textContent = "🤝 concurly";
 
     const sep = document.createElement("span");
     sep.id = "__dr-header-sep__";
