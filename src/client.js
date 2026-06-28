@@ -6,6 +6,11 @@
   let openCommentsBySelector = {};
   let hoveredEl = null;
   let scrollTimer = null;
+  let activeTab = "review"; // "review" | "history"
+
+  const HEADER_H = 36;
+  const TABS_H = 40;
+  const CHROME_H = HEADER_H + TABS_H; // 76px
 
   // ─── Selector builder ────────────────────────────────────────────────────
   function getSelector(el) {
@@ -33,7 +38,7 @@
     const style = document.createElement("style");
     style.textContent = `
       #__dr-sidebar__ {
-        position: fixed; top: 0; right: 0; width: 320px; height: 100vh;
+        position: fixed; top: 76px; right: 0; width: 320px; height: calc(100vh - 76px);
         background: #fff; z-index: 999995; display: flex; flex-direction: column;
         box-shadow: -4px 0 24px rgba(0,0,0,0.12); font-family: system-ui, sans-serif;
         font-size: 13px; transition: transform 0.2s ease;
@@ -135,6 +140,93 @@
         color: #71717a; font-size: 11px;
         overflow: hidden; text-overflow: ellipsis; min-width: 0;
       }
+
+      /* ── Tab bar ─────────────────────────────────────────────────────────── */
+      #__dr-tabs__ {
+        position: fixed; top: 36px; left: 0; right: 0; height: 40px;
+        background: #1c1c1f; z-index: 999994;
+        display: flex; align-items: center; padding: 0 12px; gap: 2px;
+        border-bottom: 1px solid #3f3f46; box-sizing: border-box;
+      }
+      .__dr-tab__ {
+        padding: 5px 14px; border-radius: 5px; border: none; cursor: pointer;
+        font-size: 13px; font-family: system-ui, sans-serif;
+        background: none; color: #a1a1aa;
+        transition: color 0.15s, background 0.15s;
+      }
+      .__dr-tab__:hover { color: #e4e4e7; }
+      .__dr-tab--active__ { background: #6366f1; color: #fff; }
+      .__dr-tab--active__:hover { background: #4f46e5; color: #fff; }
+
+      /* ── History panel ───────────────────────────────────────────────────── */
+      #__dr-history-panel__ {
+        position: fixed; top: 76px; left: 0; right: 0; bottom: 0;
+        background: #f9fafb; z-index: 999991;
+        display: none; /* shown as flex by switchTab */
+        font-family: system-ui, sans-serif;
+      }
+      #__dr-history-main__ {
+        flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+      }
+      #__dr-history-header__ {
+        padding: 20px 32px 14px;
+        font-size: 17px; font-weight: 700; color: #111;
+        border-bottom: 1px solid #e5e7eb;
+        position: sticky; top: 0; background: #f9fafb; z-index: 1;
+      }
+      #__dr-history-body__ {
+        padding: 16px 32px 32px;
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .__dr-history-card__ {
+        background: #fff; border: 1px solid #e5e7eb;
+        border-radius: 8px; padding: 16px;
+      }
+      .__dr-history-card-top__ {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        gap: 12px; margin-bottom: 6px;
+      }
+      .__dr-history-selector__ {
+        font-size: 10px; color: #9ca3af; font-family: monospace;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+      }
+      .__dr-history-badge__ {
+        flex-shrink: 0; font-size: 10px; font-weight: 600;
+        padding: 2px 8px; border-radius: 99px; white-space: nowrap;
+      }
+      .__dr-history-badge--pending__ {
+        background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;
+      }
+      .__dr-history-badge--implemented__ {
+        background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0;
+      }
+      .__dr-history-comment__ {
+        color: #111; font-size: 13px; line-height: 1.5; margin-bottom: 8px;
+      }
+      .__dr-history-date__ { font-size: 11px; color: #9ca3af; }
+
+      /* ── History stats sidebar ───────────────────────────────────────────── */
+      #__dr-history-stats__ {
+        width: 176px; flex-shrink: 0;
+        background: #fff; border-left: 1px solid #e5e7eb;
+        padding: 24px 20px; display: flex; flex-direction: column; gap: 20px;
+        overflow-y: auto;
+      }
+      .__dr-stat-block__ {
+        display: flex; flex-direction: column; gap: 4px;
+      }
+      .__dr-stat-label__ {
+        font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+        text-transform: uppercase; color: #9ca3af;
+      }
+      .__dr-stat-value__ {
+        font-size: 36px; font-weight: 700; line-height: 1; color: #111;
+      }
+      .__dr-stat-value--pending__ { color: #c2410c; }
+      .__dr-stat-value--implemented__ { color: #15803d; }
+      .__dr-stat-divider__ {
+        height: 1px; background: #f3f4f6; margin: 4px 0;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -169,6 +261,200 @@
     header.appendChild(filepath);
 
     document.body.prepend(header);
+  }
+
+  // ─── Tab bar ──────────────────────────────────────────────────────────────
+  function injectTabBar() {
+    const bar = document.createElement("div");
+    bar.id = "__dr-tabs__";
+
+    const reviewBtn = document.createElement("button");
+    reviewBtn.id = "__dr-tab-review__";
+    reviewBtn.className = "__dr-tab__ __dr-tab--active__";
+    reviewBtn.textContent = "Review";
+    reviewBtn.addEventListener("click", () => switchTab("review"));
+
+    const historyBtn = document.createElement("button");
+    historyBtn.id = "__dr-tab-history__";
+    historyBtn.className = "__dr-tab__";
+    historyBtn.textContent = "View All Comments";
+    historyBtn.addEventListener("click", () => switchTab("history"));
+
+    bar.appendChild(reviewBtn);
+    bar.appendChild(historyBtn);
+    document.body.appendChild(bar);
+  }
+
+  // ─── History panel ────────────────────────────────────────────────────────
+  function injectHistoryPanel() {
+    const panel = document.createElement("div");
+    panel.id = "__dr-history-panel__";
+
+    // ── Main scrollable column ─────────────────────────────────────────────
+    const main = document.createElement("div");
+    main.id = "__dr-history-main__";
+
+    const header = document.createElement("div");
+    header.id = "__dr-history-header__";
+    header.textContent = "All Comments";
+
+    const body = document.createElement("div");
+    body.id = "__dr-history-body__";
+
+    main.appendChild(header);
+    main.appendChild(body);
+
+    // ── Stats sidebar ──────────────────────────────────────────────────────
+    const stats = document.createElement("div");
+    stats.id = "__dr-history-stats__";
+
+    const pendingBlock = document.createElement("div");
+    pendingBlock.className = "__dr-stat-block__";
+    const pendingLabel = document.createElement("div");
+    pendingLabel.className = "__dr-stat-label__";
+    pendingLabel.textContent = "Pending";
+    const pendingValue = document.createElement("div");
+    pendingValue.className = "__dr-stat-value__ __dr-stat-value--pending__";
+    pendingValue.id = "__dr-stats-pending__";
+    pendingValue.textContent = "0";
+    pendingBlock.appendChild(pendingLabel);
+    pendingBlock.appendChild(pendingValue);
+
+    const divider = document.createElement("div");
+    divider.className = "__dr-stat-divider__";
+
+    const implementedBlock = document.createElement("div");
+    implementedBlock.className = "__dr-stat-block__";
+    const implementedLabel = document.createElement("div");
+    implementedLabel.className = "__dr-stat-label__";
+    implementedLabel.textContent = "Implemented";
+    const implementedValue = document.createElement("div");
+    implementedValue.className = "__dr-stat-value__ __dr-stat-value--implemented__";
+    implementedValue.id = "__dr-stats-implemented__";
+    implementedValue.textContent = "0";
+    implementedBlock.appendChild(implementedLabel);
+    implementedBlock.appendChild(implementedValue);
+
+    stats.appendChild(pendingBlock);
+    stats.appendChild(divider);
+    stats.appendChild(implementedBlock);
+
+    panel.appendChild(main);
+    panel.appendChild(stats);
+    document.body.appendChild(panel);
+  }
+
+  function renderHistoryPanel() {
+    const body = document.getElementById("__dr-history-body__");
+    const pendingEl = document.getElementById("__dr-stats-pending__");
+    const implementedEl = document.getElementById("__dr-stats-implemented__");
+    if (!body) return;
+
+    fetch(`http://localhost:${PORT}/comments`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((comments) => {
+        const open = comments.filter((c) => c.status === "open");
+        const resolved = comments.filter((c) => c.status === "resolved");
+
+        if (pendingEl) pendingEl.textContent = String(open.length);
+        if (implementedEl) implementedEl.textContent = String(resolved.length);
+
+        // Pending first (newest created), then implemented (newest resolved)
+        const sorted = [
+          ...open.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+          ...resolved.sort((a, b) => new Date(b.resolvedAt).getTime() - new Date(a.resolvedAt).getTime()),
+        ];
+
+        body.innerHTML = "";
+
+        if (sorted.length === 0) {
+          const empty = document.createElement("div");
+          empty.style.cssText = "color:#9ca3af; text-align:center; padding:48px 0; font-size:14px;";
+          empty.textContent = "No comments yet.";
+          body.appendChild(empty);
+          return;
+        }
+
+        sorted.forEach((comment) => {
+          const isPending = comment.status === "open";
+
+          const card = document.createElement("div");
+          card.className = "__dr-history-card__";
+
+          // Top row: selector + status badge
+          const top = document.createElement("div");
+          top.className = "__dr-history-card-top__";
+
+          const selectorEl = document.createElement("div");
+          selectorEl.className = "__dr-history-selector__";
+          selectorEl.textContent = comment.selector;
+          selectorEl.title = comment.selector;
+
+          const badge = document.createElement("span");
+          badge.className = "__dr-history-badge__ " + (isPending
+            ? "__dr-history-badge--pending__"
+            : "__dr-history-badge--implemented__");
+          badge.textContent = isPending ? "Pending" : "Implemented";
+
+          top.appendChild(selectorEl);
+          top.appendChild(badge);
+
+          const commentEl = document.createElement("div");
+          commentEl.className = "__dr-history-comment__";
+          commentEl.textContent = comment.body;
+
+          const dateEl = document.createElement("div");
+          dateEl.className = "__dr-history-date__";
+          if (isPending) {
+            dateEl.textContent = `Added ${new Date(comment.createdAt).toLocaleString()}`;
+          } else {
+            const dateStr = comment.resolvedAt
+              ? new Date(comment.resolvedAt).toLocaleString()
+              : "—";
+            dateEl.textContent = `Implemented ${dateStr}`;
+          }
+
+          card.appendChild(top);
+          card.appendChild(commentEl);
+          card.appendChild(dateEl);
+          body.appendChild(card);
+        });
+      })
+      .catch(() => {});
+  }
+
+  // ─── Tab switching ────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    activeTab = tab;
+
+    const reviewBtn = document.getElementById("__dr-tab-review__");
+    const historyBtn = document.getElementById("__dr-tab-history__");
+    const sidebar = document.getElementById("__dr-sidebar__");
+    const historyPanel = document.getElementById("__dr-history-panel__");
+
+    if (tab === "review") {
+      if (reviewBtn) reviewBtn.classList.add("__dr-tab--active__");
+      if (historyBtn) historyBtn.classList.remove("__dr-tab--active__");
+      if (sidebar) sidebar.style.display = "";
+      if (historyPanel) historyPanel.style.display = "none";
+      clearBadges();
+      Object.entries(openCommentsBySelector).forEach(([selector, list]) => {
+        injectBadge(selector, list.length);
+      });
+    } else {
+      if (reviewBtn) reviewBtn.classList.remove("__dr-tab--active__");
+      if (historyBtn) historyBtn.classList.add("__dr-tab--active__");
+      if (sidebar) sidebar.style.display = "none";
+      if (historyPanel) historyPanel.style.display = "flex";
+      clearBadges();
+      const box = document.getElementById("__docreview__");
+      if (box) box.remove();
+      if (hoveredEl) {
+        hoveredEl.classList.remove("__dr-highlight__", "__dr-highlight--annotated__");
+        hoveredEl = null;
+      }
+      renderHistoryPanel();
+    }
   }
 
   // ─── Sidebar DOM ──────────────────────────────────────────────────────────
@@ -566,11 +852,13 @@
           openCommentsBySelector[c.selector].push(c);
         });
 
-        // Re-render badges (open comments only)
+        // Badges only on the Review tab
         clearBadges();
-        Object.entries(openCommentsBySelector).forEach(([selector, list]) => {
-          injectBadge(selector, list.length);
-        });
+        if (activeTab === "review") {
+          Object.entries(openCommentsBySelector).forEach(([selector, list]) => {
+            injectBadge(selector, list.length);
+          });
+        }
 
         // Update counts
         const countEl = document.getElementById("__dr-count__");
@@ -616,6 +904,7 @@
           window.location.reload();
         } else if (msg.type === "comments-updated") {
           refreshComments();
+          if (activeTab === "history") renderHistoryPanel();
         }
       } catch (e) {}
     };
@@ -631,8 +920,11 @@
 
   // ─── Event handlers ───────────────────────────────────────────────────────
   document.addEventListener("click", (e) => {
+    if (activeTab !== "review") return;
     if (e.target.closest("#__docreview__")) return;
     if (e.target.closest("#__dr-sidebar__")) return;
+    if (e.target.closest("#__dr-tabs__")) return;
+    if (e.target.closest("#__dr-header__")) return;
 
     const selector = getSelector(e.target);
     const hasComments = openCommentsBySelector[selector]?.length > 0;
@@ -656,7 +948,9 @@
   });
 
   document.addEventListener("mouseover", (e) => {
+    if (activeTab !== "review") return;
     if (e.target.closest("#__dr-sidebar__") || e.target.closest("#__docreview__")) return;
+    if (e.target.closest("#__dr-tabs__") || e.target.closest("#__dr-header__")) return;
     if (hoveredEl) {
       hoveredEl.classList.remove("__dr-highlight__");
       hoveredEl.classList.remove("__dr-highlight--annotated__");
@@ -670,6 +964,7 @@
   });
 
   document.addEventListener("mouseout", () => {
+    if (activeTab !== "review") return;
     if (hoveredEl) {
       hoveredEl.classList.remove("__dr-highlight__");
       hoveredEl.classList.remove("__dr-highlight--annotated__");
@@ -685,6 +980,8 @@
   // ─── Init ─────────────────────────────────────────────────────────────────
   injectStyles();
   injectHeader();
+  injectTabBar();
+  injectHistoryPanel();
   injectSidebar();
   connectReloadSocket();
   refreshComments();
