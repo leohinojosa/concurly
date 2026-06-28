@@ -8,32 +8,67 @@ import { createServer, findFreePort } from "./server";
 import { getStorePath, readComments, resolveComment } from "./store";
 import { createWatcher } from "./watcher";
 
-const STATE_FILE = path.join(os.tmpdir(), "concurly-state.json");
+// One JSON file per running instance, keyed by port number.
+const STATE_DIR = path.join(os.tmpdir(), "concurly-instances");
 
 interface State {
   htmlPath: string;
   storePath: string;
   port: number;
+  pid: number;
   startedAt: string;
 }
 
-function writeState(state: State): void {
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), "utf-8");
+function stateFilePath(port: number): string {
+  return path.join(STATE_DIR, `${port}.json`);
 }
 
-function readState(): State | null {
-  if (!fs.existsSync(STATE_FILE)) return null;
+function writeInstanceState(state: State): void {
+  fs.mkdirSync(STATE_DIR, { recursive: true });
+  fs.writeFileSync(stateFilePath(state.port), JSON.stringify(state, null, 2), "utf-8");
+}
+
+function removeInstanceState(port: number): void {
+  const f = stateFilePath(port);
+  if (fs.existsSync(f)) fs.unlinkSync(f);
+}
+
+function readAllInstances(): State[] {
+  if (!fs.existsSync(STATE_DIR)) return [];
+  return fs
+    .readdirSync(STATE_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .flatMap((f) => {
+      try {
+        return [JSON.parse(fs.readFileSync(path.join(STATE_DIR, f), "utf-8")) as State];
+      } catch {
+        return [];
+      }
+    });
+}
+
+function isAlive(pid: number): boolean {
   try {
-    return JSON.parse(fs.readFileSync(STATE_FILE, "utf-8")) as State;
+    process.kill(pid, 0);
+    return true;
   } catch {
-    return null;
+    return false;
   }
+}
+
+function resolveInstance(target: string, instances: State[]): State | null {
+  const byPort = instances.find((i) => String(i.port) === target);
+  if (byPort) return byPort;
+  const abs = path.resolve(target);
+  return instances.find((i) => i.htmlPath === abs) ?? null;
 }
 
 async function openBrowser(url: string): Promise<void> {
   const { default: open } = await import("open");
   await open(url);
 }
+
+// ─── open ────────────────────────────────────────────────────────────────────
 
 async function cmdOpen(args: string[]): Promise<void> {
   const htmlArg = args[0];
@@ -48,12 +83,24 @@ async function cmdOpen(args: string[]): Promise<void> {
     process.exit(1);
   }
 
+  // Re-use an existing live instance for the same file.
+  const existing = readAllInstances().find(
+    (i) => i.htmlPath === htmlPath && isAlive(i.pid)
+  );
+  if (existing) {
+    const url = `http://localhost:${existing.port}`;
+    console.log(`Instance already running for this file on port ${existing.port}`);
+    console.log(`Opening: ${url}`);
+    await openBrowser(url);
+    return;
+  }
+
   let port: number;
   try {
     port = await findFreePort(5391);
   } catch (err) {
     console.error((err as Error).message);
-    console.error("Suggestion: close other concurly sessions and try again.");
+    console.error("Suggestion: run `concurly list` to see active sessions.");
     process.exit(1);
   }
 
@@ -69,7 +116,9 @@ async function cmdOpen(args: string[]): Promise<void> {
   const portedScript = clientScript
     .replace('"__PORT__"', String(port))
     .replace('"__FILE_PATH__"', JSON.stringify(htmlPath));
-  const tmpClientPath = path.join(os.tmpdir(), "concurly-client.js");
+
+  // Per-instance temp file so parallel sessions don't overwrite each other.
+  const tmpClientPath = path.join(os.tmpdir(), `concurly-client-${port}.js`);
   fs.writeFileSync(tmpClientPath, portedScript, "utf-8");
 
   const app = createServer(htmlPath, tmpClientPath);
@@ -78,11 +127,26 @@ async function cmdOpen(args: string[]): Promise<void> {
   const httpServer = http.createServer(app);
   const wss = new WebSocketServer({ server: httpServer });
 
+  // Clean up state file (but never comments JSON) on graceful shutdown.
+  const cleanup = () => {
+    removeInstanceState(port);
+    try { fs.unlinkSync(tmpClientPath); } catch { /* already gone */ }
+  };
+
+  process.on("SIGTERM", () => {
+    httpServer.close(() => { cleanup(); process.exit(0); });
+  });
+  process.on("SIGINT", () => {
+    httpServer.close(() => { cleanup(); process.exit(0); });
+  });
+
   httpServer.listen(port, "127.0.0.1", () => {
-    writeState({ htmlPath, storePath, port, startedAt: new Date().toISOString() });
+    writeInstanceState({ htmlPath, storePath, port, pid: process.pid, startedAt: new Date().toISOString() });
     const url = `http://localhost:${port}`;
     console.log(`concurly running on ${url}`);
-    console.log(`Comments stored at: ${storePath}`);
+    console.log(`File:     ${htmlPath}`);
+    console.log(`Comments: ${storePath}`);
+    console.log(`PID:      ${process.pid}`);
     createWatcher([htmlPath], storePath, wss);
     openBrowser(url).catch((err) => {
       console.error(`Could not open browser: ${(err as Error).message}`);
@@ -91,46 +155,107 @@ async function cmdOpen(args: string[]): Promise<void> {
   });
 }
 
-function cmdAgentList(): void {
-  const state = readState();
-  if (!state) {
+// ─── list ────────────────────────────────────────────────────────────────────
+
+function cmdList(): void {
+  const all = readAllInstances();
+
+  if (all.length === 0) {
+    console.log("No concurly instances found.");
+    return;
+  }
+
+  console.log("\nConcurly instances:\n");
+  for (const inst of all) {
+    const alive = isAlive(inst.pid);
+    const status = alive ? "running" : "stale";
+    console.log(`  Port ${inst.port}  PID ${inst.pid}  [${status}]`);
+    console.log(`  File:     ${inst.htmlPath}`);
+    console.log(`  URL:      http://localhost:${inst.port}`);
+    console.log(`  Started:  ${inst.startedAt}`);
+    console.log();
+  }
+}
+
+// ─── complete ────────────────────────────────────────────────────────────────
+
+async function cmdComplete(args: string[]): Promise<void> {
+  const target = args[0];
+  if (!target) {
+    console.error("Usage: concurly complete <port|path>");
+    process.exit(1);
+  }
+
+  const all = readAllInstances();
+  const inst = resolveInstance(target, all);
+  if (!inst) {
+    console.error(`No instance found for: ${target}`);
+    console.error("Run `concurly list` to see active sessions.");
+    process.exit(1);
+  }
+
+  if (isAlive(inst.pid)) {
+    process.kill(inst.pid, "SIGTERM");
+    console.log(`Stopped instance on port ${inst.port} (PID ${inst.pid})`);
+  } else {
+    console.log(`Instance on port ${inst.port} was already stopped (stale entry removed).`);
+    removeInstanceState(inst.port);
+  }
+
+  console.log(`Comments preserved at: ${inst.storePath}`);
+}
+
+// ─── review / agent list ─────────────────────────────────────────────────────
+
+function pickInstance(target: string | undefined): State {
+  const alive = readAllInstances().filter((i) => isAlive(i.pid));
+
+  if (alive.length === 0) {
     console.error("No active concurly session. Run: concurly open <file.html>");
     process.exit(1);
   }
 
-  const comments = readComments(state.storePath);
+  if (alive.length === 1 && !target) return alive[0];
+
+  if (!target) {
+    console.error("Multiple sessions running. Specify a port or file path:");
+    alive.forEach((i) => console.error(`  concurly review ${i.port}  (${path.basename(i.htmlPath)})`));
+    process.exit(1);
+  }
+
+  const inst = resolveInstance(target, alive);
+  if (!inst) {
+    console.error(`No active instance found for: ${target}`);
+    process.exit(1);
+  }
+  return inst;
+}
+
+function cmdReview(args: string[]): void {
+  const inst = pickInstance(args[0]);
+  const comments = readComments(inst.storePath);
   const open = comments
     .filter((c) => c.status === "open")
     .map(({ id, selector, excerpt, body, createdAt }) => ({
-      id,
-      selector,
-      excerpt,
-      body,
-      createdAt,
+      id, selector, excerpt, body, createdAt,
     }));
 
-  const output = {
-    htmlFile: state.htmlPath,
-    openComments: open,
-  };
-
-  process.stdout.write(JSON.stringify(output, null, 2) + "\n");
+  process.stdout.write(
+    JSON.stringify({ htmlFile: inst.htmlPath, port: inst.port, openComments: open }, null, 2) + "\n"
+  );
 }
 
+// ─── agent resolve ───────────────────────────────────────────────────────────
+
 function cmdAgentResolve(args: string[]): void {
-  const id = args[0];
+  const [id, target] = args;
   if (!id) {
-    console.error("Usage: concurly agent resolve <id>");
+    console.error("Usage: concurly agent resolve <id> [port|path]");
     process.exit(1);
   }
 
-  const state = readState();
-  if (!state) {
-    console.error("No active concurly session. Run: concurly open <file.html>");
-    process.exit(1);
-  }
-
-  const ok = resolveComment(state.storePath, id);
+  const inst = pickInstance(target);
+  const ok = resolveComment(inst.storePath, id);
   if (!ok) {
     console.error(`Comment not found: ${id}`);
     process.exit(1);
@@ -139,18 +264,24 @@ function cmdAgentResolve(args: string[]): void {
   console.log(`Resolved comment ${id}`);
 }
 
+// ─── help ────────────────────────────────────────────────────────────────────
+
 function printHelp(): void {
-  console.log(`concurly — Local HTML design review tool
+  console.log(`concurly — Review software architecture concurrently with an expert AI peer.
 
 Commands:
-  concurly open <file.html>        Open a design file in the browser with comment overlay
-  concurly review                  List all open comments for the active session (JSON)
-  concurly agent resolve <id>      Mark a comment as resolved
+  concurly open <file.html>              Open a design file in the browser (one instance per file)
+  concurly list                          List all running instances with port, PID, and file
+  concurly review [port|path]            Print open comments as JSON (port/path required if multiple sessions)
+  concurly complete <port|path>          Stop a specific review session (comments JSON is preserved)
+  concurly agent resolve <id> [port|path]  Mark a comment as resolved
 
 Options:
-  --help, -h                        Show this help message
+  --help, -h                             Show this help message
 `);
 }
+
+// ─── main ────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
@@ -162,26 +293,21 @@ async function main(): Promise<void> {
 
   const [cmd, ...rest] = argv;
 
-  if (cmd === "open") {
-    await cmdOpen(rest);
+  // `concurly <file.html>` shorthand defaults to open.
+  if (cmd.endsWith(".html") || cmd.endsWith(".htm")) {
+    await cmdOpen([cmd, ...rest]);
     return;
   }
 
-  if (cmd === "review") {
-    cmdAgentList();
-    return;
-  }
+  if (cmd === "open") { await cmdOpen(rest); return; }
+  if (cmd === "list") { cmdList(); return; }
+  if (cmd === "review") { cmdReview(rest); return; }
+  if (cmd === "complete") { await cmdComplete(rest); return; }
 
   if (cmd === "agent") {
     const [subCmd, ...subRest] = rest;
-    if (subCmd === "list") {
-      cmdAgentList();
-      return;
-    }
-    if (subCmd === "resolve") {
-      cmdAgentResolve(subRest);
-      return;
-    }
+    if (subCmd === "list") { cmdReview(subRest); return; }
+    if (subCmd === "resolve") { cmdAgentResolve(subRest); return; }
     console.error(`Unknown agent subcommand: ${subCmd}`);
     console.error("Valid subcommands: list, resolve");
     process.exit(1);

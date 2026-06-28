@@ -1,8 +1,8 @@
-# 👱‍♂️🤝🤖 concurly
+# 🤝 concurly
 
 > Review software architecture concurrently with an expert AI peer.
 
-Open any HTML file in the browser, leave comments on any element, then let an AI agent apply the fixes and mark them resolved — all without leaving your editor.
+Open any HTML file in the browser, leave comments on any element, then let an AI agent apply the fixes and mark them resolved — all without leaving your editor. Run as many parallel review sessions as you need; each file gets its own port.
 
 ---
 
@@ -30,7 +30,13 @@ Open an HTML file for review:
 concurly open path/to/design.html
 ```
 
-This starts a local server and opens the file in your browser with the comment overlay injected. The page automatically reloads when the file changes on disk, and the sidebar updates in real time when comments are resolved.
+Shorthand — omitting `open` defaults to it:
+
+```sh
+concurly path/to/design.html
+```
+
+This starts a local server on the next available port, opens the file in your browser with the comment overlay injected, and watches both the HTML file and the comments file for changes. If the file is already open in another session, the existing session is reused.
 
 ### Browser controls
 
@@ -48,11 +54,38 @@ This starts a local server and opens the file in your browser with the comment o
 
 ---
 
+## Managing instances
+
+Each `concurly open` call starts an independent server process on its own port, so you can review multiple files in parallel.
+
+### List all running sessions
+
+```sh
+concurly list
+```
+
+Output shows port, PID, status (`running` or `stale`), file path, and URL for every active instance.
+
+### Stop a session
+
+```sh
+concurly complete <port|path>
+```
+
+Sends a graceful shutdown signal to the session identified by port number or file path. The server stops and the instance entry is removed. **The comments JSON file is never deleted** — it is kept for historic reference.
+
+Examples:
+
+```sh
+concurly complete 5391
+concurly complete path/to/design.html
+```
+
+---
+
 ## Installing the Claude Code Skills
 
 Skills let Claude Code open files for review and apply comments automatically.
-
-Copy the skill directory to your Claude skills folder:
 
 ```powershell
 Copy-Item -Recurse -Force skills\concurly $HOME\.claude\skills\concurly
@@ -68,8 +101,6 @@ cp -r skills/concurly ~/.claude/skills/concurly
 
 ## Available Skills
 
-Calling `/concurly <path>` without a subcommand defaults to open.
-
 ### `/concurly open`
 
 Opens an HTML file in the browser with the concurly overlay active.
@@ -84,7 +115,13 @@ Shorthand (defaults to open):
 /concurly path/to/design.html
 ```
 
-Claude will start the server, open the browser, and walk you through leaving comments.
+### `/concurly list`
+
+Lists all running concurly instances.
+
+```
+/concurly list
+```
 
 ### `/concurly review`
 
@@ -94,7 +131,23 @@ Reads all open comments and applies the requested changes to the HTML file.
 /concurly review
 ```
 
+If multiple sessions are running, specify a port or path:
+
+```
+/concurly review 5391
+/concurly review path/to/design.html
+```
+
 Claude will address each comment, save the changes, and mark each comment resolved. The browser reloads automatically when the file updates, and the sidebar clears resolved comments in real time.
+
+### `/concurly complete`
+
+Stops a specific review session. Comments are preserved.
+
+```
+/concurly complete 5391
+/concurly complete path/to/design.html
+```
 
 ---
 
@@ -104,16 +157,20 @@ Claude will address each comment, save the changes, and mark each comment resolv
 
 2. **Leave comments** — click any element and describe the change you want. Repeat for all feedback.
 
-3. **Start the review** — switch back to Claude Code and run `/concurly review`. Claude reads every open comment, edits the HTML file, and resolves each comment when done.
+3. **Start the review** — run `/concurly review`. Claude reads every open comment, edits the HTML file, and resolves each comment when done.
 
 4. **Check the result** — the browser reloads automatically as changes are saved. The sidebar clears resolved comments in real time. Review the updated design and repeat the cycle if needed.
+
+5. **Close the session** — run `/concurly complete <port>` when the review is finished. Comments are preserved in the JSON file alongside the HTML for future reference.
 
 ---
 
 ## CLI Reference
 
 ```
-concurly open <file.html>        Open a file in the browser with the comment overlay
-concurly review                  Print all open comments as JSON (used by the skill)
-concurly agent resolve <id>      Mark a specific comment as resolved
+concurly open <file.html>                Open a file in the browser (one instance per file)
+concurly list                            List all running instances with port, PID, and status
+concurly review [port|path]              Print open comments as JSON
+concurly complete <port|path>            Stop a session (comments JSON preserved)
+concurly agent resolve <id> [port|path]  Mark a specific comment as resolved
 ```
