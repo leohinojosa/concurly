@@ -83,7 +83,7 @@ async function cmdOpen(args: string[]): Promise<void> {
     const url = `http://localhost:${port}`;
     console.log(`docreview running on ${url}`);
     console.log(`Comments stored at: ${storePath}`);
-    createWatcher([htmlPath], wss);
+    createWatcher([htmlPath], storePath, wss);
     openBrowser(url).catch((err) => {
       console.error(`Could not open browser: ${(err as Error).message}`);
       console.log(`Open manually: ${url}`);

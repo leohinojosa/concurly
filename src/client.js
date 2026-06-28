@@ -613,8 +613,9 @@
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === "reload") {
-          sessionStorage.setItem("__dr_live_reloaded__", "true");
           window.location.reload();
+        } else if (msg.type === "comments-updated") {
+          refreshComments();
         }
       } catch (e) {}
     };
@@ -687,11 +688,4 @@
   injectSidebar();
   connectReloadSocket();
   refreshComments();
-
-  // After a live reload, poll a few more times to catch comments the agent
-  // resolves after the file write (which is what triggers the reload).
-  if (sessionStorage.getItem("__dr_live_reloaded__") === "true") {
-    sessionStorage.removeItem("__dr_live_reloaded__");
-    [800, 1800, 3200].forEach((d) => setTimeout(refreshComments, d));
-  }
 })();

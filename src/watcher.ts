@@ -1,8 +1,12 @@
 import chokidar from "chokidar";
 import { WebSocketServer, WebSocket } from "ws";
 
-export function createWatcher(htmlPaths: string[], wss: WebSocketServer): void {
-  const watcher = chokidar.watch(htmlPaths, {
+export function createWatcher(
+  htmlPaths: string[],
+  commentsPath: string,
+  wss: WebSocketServer
+): void {
+  const watcher = chokidar.watch([...htmlPaths, commentsPath], {
     persistent: true,
     ignoreInitial: true,
     awaitWriteFinish: {
@@ -12,10 +16,20 @@ export function createWatcher(htmlPaths: string[], wss: WebSocketServer): void {
   });
 
   watcher.on("change", (changedPath) => {
-    console.log(`[docreview] File changed: ${changedPath} — reloading`);
+    const isComments = changedPath === commentsPath;
+    const message = isComments
+      ? { type: "comments-updated" }
+      : { type: "reload", file: changedPath };
+
+    console.log(
+      isComments
+        ? "[docreview] Comments file updated — refreshing sidebar"
+        : `[docreview] File changed: ${changedPath} — reloading`
+    );
+
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: "reload", file: changedPath }));
+        client.send(JSON.stringify(message));
       }
     });
   });
