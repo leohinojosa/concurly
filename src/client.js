@@ -552,7 +552,7 @@
 
   // ─── Refresh (central update entry point) ─────────────────────────────────
   function refreshComments() {
-    fetch(`http://localhost:${PORT}/comments`)
+    fetch(`http://localhost:${PORT}/comments`, { cache: "no-store" })
       .then((r) => r.json())
       .then((comments) => {
         const open = comments.filter((c) => c.status === "open");
