@@ -148,7 +148,7 @@
 
     const brand = document.createElement("span");
     brand.id = "__dr-header-brand__";
-    brand.textContent = "docreview";
+    brand.textContent = "✨ docreview";
 
     const sep = document.createElement("span");
     sep.id = "__dr-header-sep__";
@@ -613,7 +613,11 @@
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === "reload") {
-          window.location.reload();
+          // Refresh comments immediately so any resolves the agent already
+          // completed are reflected, then reload after a delay to let the
+          // agent finish any in-flight resolves before the page reinitializes.
+          refreshComments();
+          setTimeout(() => window.location.reload(), 1500);
         }
       } catch (e) {}
     };
