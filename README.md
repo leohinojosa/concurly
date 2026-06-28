@@ -1,4 +1,4 @@
-# concurly
+# 🤝 concurly
 
 > Review software architecture concurrently with an expert AI peer.
 
