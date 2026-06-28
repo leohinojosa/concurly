@@ -53,6 +53,7 @@ Steps:
 Stops a specific review session. The comments JSON file is preserved for historic reference — nothing is deleted.
 
 Steps:
-1. Run `concurly complete <port|path>` in the shell
+1. Say exactly: "we concur 🤝"
+2. Run `concurly complete <port|path>` in the shell
    - Use the port number shown in `concurly list`, or the file path of the HTML being reviewed
-2. Confirm to the user that the session has been stopped and that comments are preserved
+3. Confirm to the user that the session has been stopped and that comments are preserved
