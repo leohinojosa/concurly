@@ -68,22 +68,22 @@ cp -r skills/concurly ~/.claude/skills/concurly
 
 ## Available Skills
 
-### `/concurly-open`
+### `/concurly open`
 
 Opens an HTML file in the browser with the concurly overlay active.
 
 ```
-/concurly-open path/to/design.html
+/concurly open path/to/design.html
 ```
 
 Claude will start the server, open the browser, and walk you through leaving comments.
 
-### `/concurly-review`
+### `/concurly review`
 
 Reads all open comments and applies the requested changes to the HTML file.
 
 ```
-/concurly-review
+/concurly review
 ```
 
 Claude will address each comment, save the changes, and mark each comment resolved. The browser reloads automatically when the file updates, and the sidebar clears resolved comments in real time.
@@ -92,11 +92,11 @@ Claude will address each comment, save the changes, and mark each comment resolv
 
 ## Review Workflow
 
-1. **Open the file** — run `/concurly-open path/to/design.html` in Claude Code. The browser opens with the overlay.
+1. **Open the file** — run `/concurly open path/to/design.html` in Claude Code. The browser opens with the overlay.
 
 2. **Leave comments** — click any element and describe the change you want. Repeat for all feedback.
 
-3. **Start the review** — switch back to Claude Code and run `/concurly-review`. Claude reads every open comment, edits the HTML file, and resolves each comment when done.
+3. **Start the review** — switch back to Claude Code and run `/concurly review`. Claude reads every open comment, edits the HTML file, and resolves each comment when done.
 
 4. **Check the result** — the browser reloads automatically as changes are saved. The sidebar clears resolved comments in real time. Review the updated design and repeat the cycle if needed.
 
