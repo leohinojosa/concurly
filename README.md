@@ -8,7 +8,14 @@ Open any HTML file in the browser, leave comments on any element, then let an AI
 
 ## Installation
 
-From the project directory, install `concurly` as a global CLI command:
+Clone the repository:
+
+```sh
+git clone https://github.com/leohinojosa/concurly
+cd concurly
+```
+
+Install `concurly` as a global CLI command:
 
 ```sh
 npm install -g .
