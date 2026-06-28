@@ -138,10 +138,11 @@ The browser client auto-reconnects after 2 seconds if the WebSocket closes.
 
 ## Client Script (`src/client.js`)
 
-Plain JS IIFE — **no TypeScript, no imports, no bundler**. Read from disk and injected as a raw `<script>` tag. Two placeholders are replaced at inject time:
+Plain JS IIFE — **no TypeScript, no imports, no bundler**. Read from disk and injected as a raw `<script>` tag. Three placeholders are replaced at inject time:
 
 - `"__PORT__"` → actual port number (string replacement in `cli.ts`)
 - `"__FILE_PATH__"` → absolute path to the HTML file being served
+- `"__VERSION__"` → version string read from `package.json` (e.g. `0.3.0`)
 
 Per-instance temp file: `%TEMP%/concurly-client-<port>.js` — prevents parallel sessions from overwriting each other's injected scripts.
 
@@ -151,12 +152,12 @@ Per-instance temp file: `%TEMP%/concurly-client-<port>.js` — prevents parallel
 |---------|-----|---------|----------|
 | Comment input box | `#__docreview__` | 999999 | Fixed, near click coords |
 | Sidebar | `#__dr-sidebar__` | 999995 | Fixed, right edge |
-| Tab bar | `#__dr-tabs__` | 999994 | Fixed, `top: 36px` |
+| Tab bar | `#__dr-tabs__` | 999994 | Fixed, `top: 45px` |
 | Header bar | `#__dr-header__` | 999993 | Fixed, `top: 0` |
-| History panel | `#__dr-history-panel__` | 999991 | Fixed, `top: 76px`, full-screen |
+| History panel | `#__dr-history-panel__` | 999991 | Fixed, `top: 85px`, full-screen |
 | Badges | `.__dr-badge__` | 999990 | Fixed, near annotated elements |
 
-**Chrome height**: header (36px) + tab bar (40px) = **76px**. Body gets `padding-top: 76px !important` to prevent content from being hidden under the chrome.
+**Chrome height**: header (45px) + tab bar (40px) = **85px**. Body gets `padding-top: 85px !important` to prevent content from being hidden under the chrome.
 
 ### Module-level state in client.js
 

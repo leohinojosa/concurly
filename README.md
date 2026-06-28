@@ -181,3 +181,31 @@ concurly review [port|path]              Print open comments as JSON
 concurly complete <port|path>            Stop a session (comments JSON preserved)
 concurly agent resolve <id> [port|path]  Mark a specific comment as resolved
 ```
+
+---
+
+## Building from source
+
+Prerequisites: Node.js 20+ and npm.
+
+```sh
+git clone https://github.com/leohinojosa/concurly
+cd concurly
+npm install
+npm run build
+```
+
+`npm run build` compiles the TypeScript sources with `tsc` and copies `src/client.js` into `dist/`. After a successful build, install the CLI globally:
+
+```sh
+npm install -g .
+concurly --help
+```
+
+To rebuild after making changes to any source file:
+
+```sh
+npm run build
+```
+
+Then restart any open sessions (`concurly complete <port>`, then `concurly open <file>`) to pick up the new client script.
