@@ -690,4 +690,5 @@
   injectSidebar();
   connectReloadSocket();
   refreshComments();
+  setTimeout(refreshComments, 1000);
 })();
