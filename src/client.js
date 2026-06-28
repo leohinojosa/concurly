@@ -62,22 +62,33 @@
         font-style: italic; color: #6b7280; font-size: 11px; margin-bottom: 6px;
       }
       .__dr-thread-body__ { color: #111; margin-bottom: 8px; line-height: 1.4; }
-      .__dr-thread-actions__ { display: flex; gap: 6px; }
-      .__dr-scroll-btn__, .__dr-resolve-btn__ {
+      .__dr-thread-actions__ { display: flex; gap: 6px; flex-wrap: wrap; }
+      .__dr-scroll-btn__, .__dr-resolve-btn__, .__dr-edit-btn__, .__dr-delete-btn__ {
         font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer; border: 1px solid;
       }
       .__dr-scroll-btn__ { border-color: #d1d5db; background: #f9fafb; color: #374151; }
       .__dr-resolve-btn__ { border-color: #6366f1; background: #6366f1; color: #fff; }
       .__dr-resolve-btn__:hover { background: #4f46e5; }
-      #__dr-sidebar-footer__ {
-        padding: 12px 16px; border-top: 1px solid #e5e7eb;
+      .__dr-edit-btn__ { border-color: #d1d5db; background: #f9fafb; color: #374151; }
+      .__dr-edit-btn__:hover { background: #e5e7eb; }
+      .__dr-delete-btn__ { border-color: #fca5a5; background: #fff; color: #dc2626; }
+      .__dr-delete-btn__:hover { background: #fee2e2; }
+      .__dr-edit-area__ {
+        width: 100%; box-sizing: border-box; border: 1px solid #a5b4fc;
+        border-radius: 4px; padding: 6px; font-size: 13px; resize: vertical;
+        min-height: 60px; margin-bottom: 6px; font-family: system-ui, sans-serif;
+        outline: none;
       }
-      #__dr-nudge-btn__ {
-        width: 100%; padding: 8px; background: #111; color: #fff; border: none;
-        border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+      .__dr-edit-actions__ { display: flex; gap: 6px; margin-bottom: 6px; }
+      .__dr-save-btn__ {
+        font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+        border: 1px solid #6366f1; background: #6366f1; color: #fff;
       }
-      #__dr-nudge-btn__:disabled { opacity: 0.5; cursor: not-allowed; }
-      #__dr-nudge-btn__:hover:not(:disabled) { background: #333; }
+      .__dr-save-btn__:hover { background: #4f46e5; }
+      .__dr-cancel-btn__ {
+        font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+        border: 1px solid #d1d5db; background: #f9fafb; color: #374151;
+      }
       .__dr-highlight__ {
         outline: 2px solid #a5b4fc !important;
         outline-offset: 2px !important;
@@ -118,37 +129,8 @@
     const body = document.createElement("div");
     body.id = "__dr-sidebar-body__";
 
-    const footer = document.createElement("div");
-    footer.id = "__dr-sidebar-footer__";
-
-    const nudgeBtn = document.createElement("button");
-    nudgeBtn.id = "__dr-nudge-btn__";
-    nudgeBtn.textContent = "▶ Review Comments";
-
-    const nudgeOutput = document.createElement("div");
-    nudgeOutput.id = "__dr-nudge-output__";
-    nudgeOutput.style.cssText = `
-      display: none;
-      margin-top: 10px;
-      background: #0d0d0d;
-      color: #d4d4d4;
-      font-family: 'Consolas', 'Courier New', monospace;
-      font-size: 11px;
-      line-height: 1.5;
-      padding: 10px;
-      border-radius: 6px;
-      max-height: 200px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-    `;
-
-    footer.appendChild(nudgeBtn);
-    footer.appendChild(nudgeOutput);
-
     sidebar.appendChild(header);
     sidebar.appendChild(body);
-    sidebar.appendChild(footer);
 
     document.body.appendChild(sidebar);
 
@@ -158,8 +140,6 @@
       sidebar.classList.add("collapsed");
       collapseBtn.textContent = "▶";
     }
-
-    attachNudgeButton();
   }
 
   // ─── Sidebar open / collapse ──────────────────────────────────────────────
@@ -184,9 +164,8 @@
   function scrollSidebarToSelector(selector) {
     const body = document.getElementById("__dr-sidebar-body__");
     if (!body) return;
-    // Iterate cards and compare dataset directly — safer than attribute selectors with special chars
-    const cards = body.querySelectorAll(".__dr-thread__");
-    for (const card of cards) {
+    // Compare dataset directly — avoids attribute-selector escaping issues
+    for (const card of body.querySelectorAll(".__dr-thread__")) {
       if (card.dataset.selector === selector) {
         card.scrollIntoView({ behavior: "smooth", block: "nearest" });
         break;
@@ -313,6 +292,74 @@
     });
   }
 
+  // ─── Inline edit UI inside a thread card ─────────────────────────────────
+  function openInlineEdit(card, comment) {
+    const bodyEl = card.querySelector(".__dr-thread-body__");
+    const actionsEl = card.querySelector(".__dr-thread-actions__");
+    if (!bodyEl || !actionsEl) return;
+
+    // Guard: prevent opening two edit areas on the same card
+    if (card.querySelector(".__dr-edit-area__")) return;
+
+    const original = bodyEl.textContent;
+    bodyEl.style.display = "none";
+    actionsEl.style.display = "none";
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "__dr-edit-area__";
+    textarea.value = original;
+
+    const editActions = document.createElement("div");
+    editActions.className = "__dr-edit-actions__";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "__dr-save-btn__";
+    saveBtn.textContent = "Save";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "__dr-cancel-btn__";
+    cancelBtn.textContent = "Cancel";
+
+    const cleanup = () => {
+      textarea.remove();
+      editActions.remove();
+      bodyEl.style.display = "";
+      actionsEl.style.display = "";
+    };
+
+    cancelBtn.addEventListener("click", cleanup);
+
+    saveBtn.addEventListener("click", async () => {
+      const newBody = textarea.value.trim();
+      if (!newBody || newBody === original) {
+        cleanup();
+        return;
+      }
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving…";
+      try {
+        await fetch(`http://localhost:${PORT}/comments/${comment.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body: newBody }),
+        });
+        cleanup();
+        refreshComments();
+      } catch (e) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Error — retry";
+      }
+    });
+
+    editActions.appendChild(saveBtn);
+    editActions.appendChild(cancelBtn);
+
+    card.insertBefore(textarea, actionsEl);
+    card.insertBefore(editActions, actionsEl);
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+  }
+
   // ─── Sidebar thread list ──────────────────────────────────────────────────
   function renderSidebar(comments) {
     const body = document.getElementById("__dr-sidebar-body__");
@@ -368,6 +415,11 @@
         setTimeout(() => target.classList.remove("__dr-highlight-pulse__"), 1500);
       });
 
+      const editBtn = document.createElement("button");
+      editBtn.className = "__dr-edit-btn__";
+      editBtn.textContent = "✎ Edit";
+      editBtn.addEventListener("click", () => openInlineEdit(card, comment));
+
       const resolveBtn = document.createElement("button");
       resolveBtn.className = "__dr-resolve-btn__";
       resolveBtn.textContent = "✓ Resolve";
@@ -385,8 +437,27 @@
         }
       });
 
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "__dr-delete-btn__";
+      deleteBtn.textContent = "✕ Delete";
+      deleteBtn.addEventListener("click", async () => {
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = "Deleting…";
+        try {
+          await fetch(`http://localhost:${PORT}/comments/${comment.id}`, {
+            method: "DELETE",
+          });
+          refreshComments();
+        } catch (e) {
+          deleteBtn.disabled = false;
+          deleteBtn.textContent = "✕ Delete";
+        }
+      });
+
       actions.appendChild(scrollBtn);
+      actions.appendChild(editBtn);
       actions.appendChild(resolveBtn);
+      actions.appendChild(deleteBtn);
 
       card.appendChild(selectorEl);
       card.appendChild(excerptEl);
@@ -423,58 +494,6 @@
         renderSidebar(comments);
       })
       .catch(() => {});
-  }
-
-  // ─── Nudge button ─────────────────────────────────────────────────────────
-  function attachNudgeButton() {
-    const btn = document.getElementById("__dr-nudge-btn__");
-    const output = document.getElementById("__dr-nudge-output__");
-    if (!btn || !output) return;
-
-    btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      btn.textContent = "⏳ Reviewing…";
-      output.style.display = "block";
-      output.textContent = "";
-
-      try {
-        const res = await fetch(`http://localhost:${PORT}/nudge`, { method: "POST" });
-        const data = await res.json();
-
-        if (!res.ok) {
-          output.textContent = `Error: ${data.error}`;
-          btn.disabled = false;
-          btn.textContent = "▶ Review Comments";
-          return;
-        }
-
-        output.textContent = `Agent started — reviewing ${data.commentCount} comment(s)...\n`;
-
-        const evtSource = new EventSource(`http://localhost:${PORT}/nudge/stream`);
-        evtSource.onmessage = (e) => {
-          const msg = JSON.parse(e.data);
-          if (msg.text) {
-            output.textContent += msg.text;
-            output.scrollTop = output.scrollHeight;
-          }
-          if (msg.done) {
-            evtSource.close();
-            btn.disabled = false;
-            btn.textContent = "▶ Review Comments";
-            setTimeout(refreshComments, 500);
-          }
-        };
-        evtSource.onerror = () => {
-          evtSource.close();
-          btn.disabled = false;
-          btn.textContent = "▶ Review Comments";
-        };
-      } catch (err) {
-        output.textContent = `Failed to reach docreview server: ${err.message}`;
-        btn.disabled = false;
-        btn.textContent = "▶ Review Comments";
-      }
-    });
   }
 
   // ─── Event handlers ───────────────────────────────────────────────────────

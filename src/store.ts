@@ -37,3 +37,21 @@ export function resolveComment(storePath: string, id: string): boolean {
   fs.writeFileSync(storePath, JSON.stringify(comments, null, 2), "utf-8");
   return true;
 }
+
+export function updateComment(storePath: string, id: string, body: string): boolean {
+  const comments = readComments(storePath);
+  const target = comments.find((c) => c.id === id && c.status === "open");
+  if (!target) return false;
+  target.body = body;
+  fs.writeFileSync(storePath, JSON.stringify(comments, null, 2), "utf-8");
+  return true;
+}
+
+export function deleteComment(storePath: string, id: string): boolean {
+  const comments = readComments(storePath);
+  const index = comments.findIndex((c) => c.id === id && c.status === "open");
+  if (index === -1) return false;
+  comments.splice(index, 1);
+  fs.writeFileSync(storePath, JSON.stringify(comments, null, 2), "utf-8");
+  return true;
+}

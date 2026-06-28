@@ -12,12 +12,16 @@ Steps:
 1. Run `docreview open <path>` in the shell
 2. Tell the user the browser has opened and they can:
    - Click any element to leave a comment
-   - Hover over elements to highlight them (brighter outline = element has open comments)
+   - Hover over elements to highlight them (brighter indigo outline = element has open comments; faint outline = no comments)
    - Use the sidebar panel (right edge) to see all open comment threads
-   - Click "↳ Show in page" in a thread card to scroll to and highlight the element
-   - Click "✓ Resolve" in a thread card to resolve a comment without using the agent
-   - Click "▶ Review Comments" at the bottom of the sidebar to trigger the AI agent directly from the browser
-3. Remind them to run `/docreview-review` when ready for you to address the comments (or they can use the in-browser button)
+   - Each thread card shows the selector, excerpt, and comment body with four actions:
+     - **↳ Show in page** — scrolls to the element and briefly highlights it yellow
+     - **✎ Edit** — opens an inline textarea to update the comment body; Save or Cancel
+     - **✓ Resolve** — marks the comment resolved and removes it from the sidebar
+     - **✕ Delete** — permanently removes the comment (only available while open/unresolved)
+   - Click a commented element to open the sidebar focused on that thread
+   - Collapse/expand the sidebar with the ✕/▶ button; state is remembered per browser tab
+3. Remind them to run `/docreview-review` when ready for you to address the comments
 
 ## /docreview-review
 
