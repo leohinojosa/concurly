@@ -2,6 +2,8 @@
 
 Review software architecture concurrently with an expert AI peer. Open any HTML file in the browser, leave comments on elements, then let the AI apply the fixes and mark them resolved.
 
+**Default behavior:** `/concurly <path-to-file.html>` with no subcommand defaults to `/concurly open`. If the user types `/concurly` followed by a file path, treat it as `/concurly open`.
+
 ## /concurly-open
 
 Opens an HTML design file in the browser with the comment layer active.
@@ -22,7 +24,7 @@ Steps:
      - **✕ Delete** — permanently removes the comment (only available while open/unresolved)
    - Click a commented element to open the sidebar focused on that thread
    - Collapse/expand the sidebar with the ✕/▶ button; state is remembered per browser tab
-3. Remind them to run `/concurly-review` when ready for you to address the comments
+3. Remind them to run `/concurly review` when ready for you to address the comments
 
 ## /concurly-review
 

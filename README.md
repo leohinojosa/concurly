@@ -68,12 +68,20 @@ cp -r skills/concurly ~/.claude/skills/concurly
 
 ## Available Skills
 
+Calling `/concurly <path>` without a subcommand defaults to open.
+
 ### `/concurly open`
 
 Opens an HTML file in the browser with the concurly overlay active.
 
 ```
 /concurly open path/to/design.html
+```
+
+Shorthand (defaults to open):
+
+```
+/concurly path/to/design.html
 ```
 
 Claude will start the server, open the browser, and walk you through leaving comments.
