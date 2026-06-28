@@ -136,11 +136,18 @@ async function cmdOpen(args: string[]): Promise<void> {
     try { fs.unlinkSync(tmpClientPath); } catch { /* already gone */ }
   };
 
-  process.on("SIGTERM", () => {
-    httpServer.close(() => { cleanup(); process.exit(0); });
-  });
-  process.on("SIGINT", () => {
-    httpServer.close(() => { cleanup(); process.exit(0); });
+  // Don't wait for httpServer.close(callback) — it only fires after all
+  // connections drain. An open browser WebSocket blocks it indefinitely.
+  process.on("SIGTERM", () => { cleanup(); process.exit(0); });
+  process.on("SIGINT",  () => { cleanup(); process.exit(0); });
+
+  // HTTP shutdown endpoint so cmdComplete can exit cleanly on Windows.
+  // On Windows, process.kill(pid, "SIGTERM") uses TerminateProcess which bypasses
+  // the SIGTERM handler, forcing exit code 1. The fetch approach lets the server
+  // control its own exit code.
+  app.post("/shutdown", (_req, res) => {
+    res.json({ ok: true });
+    setImmediate(() => { cleanup(); process.exit(0); });
   });
 
   httpServer.listen(port, "127.0.0.1", () => {
@@ -163,16 +170,23 @@ async function cmdOpen(args: string[]): Promise<void> {
 function cmdList(): void {
   const all = readAllInstances();
 
-  if (all.length === 0) {
+  const alive: State[] = [];
+  for (const inst of all) {
+    if (isAlive(inst.pid)) {
+      alive.push(inst);
+    } else {
+      removeInstanceState(inst.port);
+    }
+  }
+
+  if (alive.length === 0) {
     console.log("No concurly instances found.");
     return;
   }
 
   console.log("\nConcurly instances:\n");
-  for (const inst of all) {
-    const alive = isAlive(inst.pid);
-    const status = alive ? "running" : "stale";
-    console.log(`  Port ${inst.port}  PID ${inst.pid}  [${status}]`);
+  for (const inst of alive) {
+    console.log(`  Port ${inst.port}  PID ${inst.pid}  [running]`);
     console.log(`  File:     ${inst.htmlPath}`);
     console.log(`  URL:      http://localhost:${inst.port}`);
     console.log(`  Started:  ${inst.startedAt}`);
@@ -184,27 +198,51 @@ function cmdList(): void {
 
 async function cmdComplete(args: string[]): Promise<void> {
   const target = args[0];
-  if (!target) {
-    console.error("Usage: concurly complete <port|path>");
-    process.exit(1);
-  }
-
   const all = readAllInstances();
-  const inst = resolveInstance(target, all);
-  if (!inst) {
-    console.error(`No instance found for: ${target}`);
-    console.error("Run `concurly list` to see active sessions.");
-    process.exit(1);
+  let inst: State | null;
+
+  if (!target) {
+    // Auto-detect: no arg given — find the single alive instance.
+    const alive = all.filter((i) => isAlive(i.pid));
+    if (alive.length === 0) {
+      for (const i of all) removeInstanceState(i.port); // clean up any stale files
+      console.error("No active concurly session found. Run: concurly open <file.html>");
+      process.exit(1);
+    }
+    if (alive.length === 1) {
+      inst = alive[0];
+    } else {
+      console.error("Multiple sessions running. Specify a port or file path:");
+      alive.forEach((i) => console.error(`  concurly complete ${i.port}  (${path.basename(i.htmlPath)})`));
+      process.exit(1);
+    }
+  } else {
+    inst = resolveInstance(target, all);
+    if (!inst) {
+      console.error(`No instance found for: ${target}`);
+      console.error("Run `concurly list` to see active sessions.");
+      process.exit(1);
+    }
   }
 
   if (isAlive(inst.pid)) {
-    process.kill(inst.pid, "SIGTERM");
-    console.log(`Stopped instance on port ${inst.port} (PID ${inst.pid})`);
+    try {
+      // Use HTTP so the server calls process.exit(0) itself — on Windows,
+      // process.kill uses TerminateProcess which exits with code 1 and skips handlers.
+      await fetch(`http://127.0.0.1:${inst.port}/shutdown`, {
+        method: "POST",
+        signal: AbortSignal.timeout(3000),
+      });
+      console.log(`Stopped instance on port ${inst.port} (PID ${inst.pid})`);
+    } catch {
+      // Server already gone or unresponsive.
+      console.log(`Instance on port ${inst.port} has already stopped.`);
+    }
   } else {
-    console.log(`Instance on port ${inst.port} was already stopped (stale entry removed).`);
-    removeInstanceState(inst.port);
+    console.log(`Instance on port ${inst.port} was already stopped.`);
   }
 
+  removeInstanceState(inst.port);
   console.log(`Comments preserved at: ${inst.storePath}`);
 }
 
@@ -276,7 +314,7 @@ Commands:
   concurly open <file.html>              Open a design file in the browser (one instance per file)
   concurly list                          List all running instances with port, PID, and file
   concurly review [port|path]            Print open comments as JSON (port/path required if multiple sessions)
-  concurly complete <port|path>          Stop a specific review session (comments JSON is preserved)
+  concurly complete [port|path]          Stop a review session; auto-selects if only one is running
   concurly agent resolve <id> [port|path]  Mark a comment as resolved
 
 Options:
