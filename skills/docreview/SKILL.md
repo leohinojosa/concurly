@@ -29,7 +29,7 @@ Steps:
 Reads all open comments on the active HTML file and addresses each one.
 
 Steps:
-1. Run `docreview agent list` and parse the JSON output
+1. Run `docreview review` and parse the JSON output
 2. For each comment in `openComments`:
    a. Read the `selector` and `excerpt` to identify which element is being commented on
    b. Open the HTML file on disk and locate the element matching the selector

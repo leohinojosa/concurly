@@ -144,7 +144,7 @@ function printHelp(): void {
 
 Commands:
   docreview open <file.html>        Open a design file in the browser with comment overlay
-  docreview agent list              List all open comments for the active session (JSON)
+  docreview review                  List all open comments for the active session (JSON)
   docreview agent resolve <id>      Mark a comment as resolved
 
 Options:
@@ -164,6 +164,11 @@ async function main(): Promise<void> {
 
   if (cmd === "open") {
     await cmdOpen(rest);
+    return;
+  }
+
+  if (cmd === "review") {
+    cmdAgentList();
     return;
   }
 
