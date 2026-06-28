@@ -1,17 +1,17 @@
-# docreview
+# concurly
 
-Review HTML design documents with inline comments and resolve them as an agent.
+Review software architecture concurrently with an expert AI peer. Open any HTML file in the browser, leave comments on elements, then let the AI apply the fixes and mark them resolved.
 
-## /docreview-open
+## /concurly-open
 
 Opens an HTML design file in the browser with the comment layer active.
 
-Usage: `/docreview-open <path-to-file.html>`
+Usage: `/concurly-open <path-to-file.html>`
 
 Steps:
-1. Run `docreview open <path>` in the shell
+1. Run `concurly open <path>` in the shell
 2. Tell the user the browser has opened with a dark header bar at the top showing the app
-   name ("docreview"), the filename, and the full file path. They can also:
+   name ("concurly"), the filename, and the full file path. They can also:
    - Click any element to leave a comment
    - Hover over elements to highlight them (brighter indigo outline = element has open comments; faint outline = no comments)
    - Use the sidebar panel (right edge) to see all open comment threads
@@ -22,17 +22,17 @@ Steps:
      - **✕ Delete** — permanently removes the comment (only available while open/unresolved)
    - Click a commented element to open the sidebar focused on that thread
    - Collapse/expand the sidebar with the ✕/▶ button; state is remembered per browser tab
-3. Remind them to run `/docreview-review` when ready for you to address the comments
+3. Remind them to run `/concurly-review` when ready for you to address the comments
 
-## /docreview-review
+## /concurly-review
 
 Reads all open comments on the active HTML file and addresses each one.
 
 Steps:
-1. Run `docreview review` and parse the JSON output
+1. Run `concurly review` and parse the JSON output
 2. For each comment in `openComments`:
    a. Read the `selector` and `excerpt` to identify which element is being commented on
    b. Open the HTML file on disk and locate the element matching the selector
    c. Apply the change described in `body`
-   d. Run `docreview agent resolve <id>` to mark it resolved
-3. After all comments are addressed, tell the user what was changed and ask them to refresh the browser to review
+   d. Run `concurly agent resolve <id>` to mark it resolved
+3. After all comments are addressed, tell the user what was changed and ask them to review the browser

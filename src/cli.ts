@@ -8,7 +8,7 @@ import { createServer, findFreePort } from "./server";
 import { getStorePath, readComments, resolveComment } from "./store";
 import { createWatcher } from "./watcher";
 
-const STATE_FILE = path.join(os.tmpdir(), "docreview-state.json");
+const STATE_FILE = path.join(os.tmpdir(), "concurly-state.json");
 
 interface State {
   htmlPath: string;
@@ -38,7 +38,7 @@ async function openBrowser(url: string): Promise<void> {
 async function cmdOpen(args: string[]): Promise<void> {
   const htmlArg = args[0];
   if (!htmlArg) {
-    console.error("Usage: docreview open <file.html>");
+    console.error("Usage: concurly open <file.html>");
     process.exit(1);
   }
 
@@ -53,7 +53,7 @@ async function cmdOpen(args: string[]): Promise<void> {
     port = await findFreePort(5391);
   } catch (err) {
     console.error((err as Error).message);
-    console.error("Suggestion: close other docreview sessions and try again.");
+    console.error("Suggestion: close other concurly sessions and try again.");
     process.exit(1);
   }
 
@@ -69,7 +69,7 @@ async function cmdOpen(args: string[]): Promise<void> {
   const portedScript = clientScript
     .replace('"__PORT__"', String(port))
     .replace('"__FILE_PATH__"', JSON.stringify(htmlPath));
-  const tmpClientPath = path.join(os.tmpdir(), "docreview-client.js");
+  const tmpClientPath = path.join(os.tmpdir(), "concurly-client.js");
   fs.writeFileSync(tmpClientPath, portedScript, "utf-8");
 
   const app = createServer(htmlPath, tmpClientPath);
@@ -81,7 +81,7 @@ async function cmdOpen(args: string[]): Promise<void> {
   httpServer.listen(port, "127.0.0.1", () => {
     writeState({ htmlPath, storePath, port, startedAt: new Date().toISOString() });
     const url = `http://localhost:${port}`;
-    console.log(`docreview running on ${url}`);
+    console.log(`concurly running on ${url}`);
     console.log(`Comments stored at: ${storePath}`);
     createWatcher([htmlPath], storePath, wss);
     openBrowser(url).catch((err) => {
@@ -94,7 +94,7 @@ async function cmdOpen(args: string[]): Promise<void> {
 function cmdAgentList(): void {
   const state = readState();
   if (!state) {
-    console.error("No active docreview session. Run: docreview open <file.html>");
+    console.error("No active concurly session. Run: concurly open <file.html>");
     process.exit(1);
   }
 
@@ -120,13 +120,13 @@ function cmdAgentList(): void {
 function cmdAgentResolve(args: string[]): void {
   const id = args[0];
   if (!id) {
-    console.error("Usage: docreview agent resolve <id>");
+    console.error("Usage: concurly agent resolve <id>");
     process.exit(1);
   }
 
   const state = readState();
   if (!state) {
-    console.error("No active docreview session. Run: docreview open <file.html>");
+    console.error("No active concurly session. Run: concurly open <file.html>");
     process.exit(1);
   }
 
@@ -140,12 +140,12 @@ function cmdAgentResolve(args: string[]): void {
 }
 
 function printHelp(): void {
-  console.log(`docreview — Local HTML design review tool
+  console.log(`concurly — Local HTML design review tool
 
 Commands:
-  docreview open <file.html>        Open a design file in the browser with comment overlay
-  docreview review                  List all open comments for the active session (JSON)
-  docreview agent resolve <id>      Mark a comment as resolved
+  concurly open <file.html>        Open a design file in the browser with comment overlay
+  concurly review                  List all open comments for the active session (JSON)
+  concurly agent resolve <id>      Mark a comment as resolved
 
 Options:
   --help, -h                        Show this help message

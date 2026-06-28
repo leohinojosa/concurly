@@ -23,8 +23,8 @@ export function createWatcher(
 
     console.log(
       isComments
-        ? "[docreview] Comments file updated — refreshing sidebar"
-        : `[docreview] File changed: ${changedPath} — reloading`
+        ? "[concurly] Comments file updated — refreshing sidebar"
+        : `[concurly] File changed: ${changedPath} — reloading`
     );
 
     wss.clients.forEach((client) => {
@@ -35,6 +35,6 @@ export function createWatcher(
   });
 
   watcher.on("error", (err) => {
-    console.error(`[docreview] Watcher error: ${(err as Error).message}`);
+    console.error(`[concurly] Watcher error: ${(err as Error).message}`);
   });
 }

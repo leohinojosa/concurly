@@ -1,12 +1,14 @@
-# docreview
+# concurly
 
-A local HTML design review tool. Open any HTML file in the browser, leave comments on any element, then let an AI agent apply the fixes and mark them resolved — all without leaving your editor.
+> Review software architecture concurrently with an expert AI peer.
+
+Open any HTML file in the browser, leave comments on any element, then let an AI agent apply the fixes and mark them resolved — all without leaving your editor.
 
 ---
 
 ## Installation
 
-From the project directory, install `docreview` as a global CLI command:
+From the project directory, install `concurly` as a global CLI command:
 
 ```sh
 npm install -g .
@@ -15,20 +17,20 @@ npm install -g .
 Verify it worked:
 
 ```sh
-docreview --help
+concurly --help
 ```
 
 ---
 
-## Running docreview
+## Running concurly
 
 Open an HTML file for review:
 
 ```sh
-docreview open path/to/design.html
+concurly open path/to/design.html
 ```
 
-This starts a local server and opens the file in your browser with the comment overlay injected. The page automatically reloads when the file changes on disk.
+This starts a local server and opens the file in your browser with the comment overlay injected. The page automatically reloads when the file changes on disk, and the sidebar updates in real time when comments are resolved.
 
 ### Browser controls
 
@@ -53,48 +55,48 @@ Skills let Claude Code open files for review and apply comments automatically.
 Copy the skill directory to your Claude skills folder:
 
 ```powershell
-Copy-Item -Recurse -Force skills\docreview $HOME\.claude\skills\docreview
+Copy-Item -Recurse -Force skills\concurly $HOME\.claude\skills\concurly
 ```
 
 On macOS / Linux:
 
 ```sh
-cp -r skills/docreview ~/.claude/skills/docreview
+cp -r skills/concurly ~/.claude/skills/concurly
 ```
 
 ---
 
 ## Available Skills
 
-### `/docreview-open`
+### `/concurly-open`
 
-Opens an HTML file in the browser with the docreview overlay active.
+Opens an HTML file in the browser with the concurly overlay active.
 
 ```
-/docreview-open path/to/design.html
+/concurly-open path/to/design.html
 ```
 
 Claude will start the server, open the browser, and walk you through leaving comments.
 
-### `/docreview-review`
+### `/concurly-review`
 
 Reads all open comments and applies the requested changes to the HTML file.
 
 ```
-/docreview-review
+/concurly-review
 ```
 
-Claude will address each comment, save the changes, and mark each comment resolved. The browser reloads automatically when the file and comments are updated.
+Claude will address each comment, save the changes, and mark each comment resolved. The browser reloads automatically when the file updates, and the sidebar clears resolved comments in real time.
 
 ---
 
 ## Review Workflow
 
-1. **Open the file** — run `/docreview-open path/to/design.html` in Claude Code. The browser opens with the overlay.
+1. **Open the file** — run `/concurly-open path/to/design.html` in Claude Code. The browser opens with the overlay.
 
 2. **Leave comments** — click any element and describe the change you want. Repeat for all feedback.
 
-3. **Start the review** — switch back to Claude Code and run `/docreview-review`. Claude reads every open comment, edits the HTML file, and resolves each comment when done.
+3. **Start the review** — switch back to Claude Code and run `/concurly-review`. Claude reads every open comment, edits the HTML file, and resolves each comment when done.
 
 4. **Check the result** — the browser reloads automatically as changes are saved. The sidebar clears resolved comments in real time. Review the updated design and repeat the cycle if needed.
 
@@ -103,7 +105,7 @@ Claude will address each comment, save the changes, and mark each comment resolv
 ## CLI Reference
 
 ```
-docreview open <file.html>        Open a file in the browser with the comment overlay
-docreview review                  Print all open comments as JSON (used by the skill)
-docreview agent resolve <id>      Mark a specific comment as resolved
+concurly open <file.html>        Open a file in the browser with the comment overlay
+concurly review                  Print all open comments as JSON (used by the skill)
+concurly agent resolve <id>      Mark a specific comment as resolved
 ```

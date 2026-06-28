@@ -1,10 +1,10 @@
 {
-  "name": "docreview",
+  "name": "concurly",
   "version": "0.3.0",
-  "description": "Local HTML design review tool with AI agent comment loop",
+  "description": "Review software architecture concurrently with an expert AI peer.",
   "main": "dist/cli.js",
   "bin": {
-    "docreview": "dist/cli.js"
+    "concurly": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
