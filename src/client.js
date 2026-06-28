@@ -37,6 +37,8 @@
   function injectStyles() {
     const style = document.createElement("style");
     style.textContent = `
+      body { padding-top: 76px !important; }
+
       #__dr-sidebar__ {
         position: fixed; top: 76px; right: 0; width: 320px; height: calc(100vh - 76px);
         background: #fff; z-index: 999995; display: flex; flex-direction: column;
@@ -140,6 +142,14 @@
         color: #71717a; font-size: 11px;
         overflow: hidden; text-overflow: ellipsis; min-width: 0;
       }
+      #__dr-header-github__ {
+        margin-left: auto; flex-shrink: 0;
+        color: #52525b; text-decoration: none;
+        display: flex; align-items: center;
+        opacity: 0.6; transition: opacity 0.15s, color 0.15s;
+      }
+      #__dr-header-github__:hover { opacity: 1; color: #a1a1aa; }
+      #__dr-header-github__ svg { width: 14px; height: 14px; }
 
       /* ── Tab bar ─────────────────────────────────────────────────────────── */
       #__dr-tabs__ {
@@ -255,10 +265,19 @@
     filepath.textContent = FILE_PATH;
     filepath.title = FILE_PATH;
 
+    const ghLink = document.createElement("a");
+    ghLink.id = "__dr-header-github__";
+    ghLink.href = "https://github.com/leohinojosa/concurly";
+    ghLink.target = "_blank";
+    ghLink.rel = "noopener noreferrer";
+    ghLink.title = "concurly on GitHub";
+    ghLink.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>`;
+
     header.appendChild(brand);
     header.appendChild(sep);
     header.appendChild(filename);
     header.appendChild(filepath);
+    header.appendChild(ghLink);
 
     document.body.prepend(header);
   }
