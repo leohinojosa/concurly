@@ -1,5 +1,6 @@
 (function () {
-  const PORT = "__PORT__"; // Replaced at inject time by server.ts
+  const PORT = "__PORT__"; // Replaced at inject time by cli.ts
+  const FILE_PATH = "__FILE_PATH__"; // Replaced at inject time by cli.ts
 
   // Module-level state
   let openCommentsBySelector = {};
@@ -103,8 +104,60 @@
         background-color: rgba(250, 204, 21, 0.3) !important;
         transition: background-color 0.3s ease;
       }
+      #__dr-header__ {
+        position: fixed; top: 0; left: 0; right: 0; height: 36px;
+        background: #18181b; z-index: 999993;
+        display: flex; align-items: center; padding: 0 16px; gap: 10px;
+        font-family: system-ui, sans-serif; font-size: 12px;
+        white-space: nowrap; overflow: hidden; box-sizing: border-box;
+      }
+      #__dr-header-brand__ {
+        color: #818cf8; font-family: monospace; font-weight: 700;
+        font-size: 13px; letter-spacing: 0.05em; flex-shrink: 0;
+      }
+      #__dr-header-sep__ { color: #52525b; flex-shrink: 0; }
+      #__dr-header-filename__ {
+        color: #f4f4f5; font-weight: 600; flex-shrink: 0;
+      }
+      #__dr-header-path__ {
+        color: #71717a; font-size: 11px;
+        overflow: hidden; text-overflow: ellipsis; min-width: 0;
+      }
     `;
     document.head.appendChild(style);
+  }
+
+  // ─── Header bar ───────────────────────────────────────────────────────────
+  function injectHeader() {
+    // Extract just the filename from the full path (works for both / and \ separators)
+    const fileName = FILE_PATH.replace(/.*[\\/]/, "") || FILE_PATH;
+
+    const header = document.createElement("div");
+    header.id = "__dr-header__";
+
+    const brand = document.createElement("span");
+    brand.id = "__dr-header-brand__";
+    brand.textContent = "docreview";
+
+    const sep = document.createElement("span");
+    sep.id = "__dr-header-sep__";
+    sep.textContent = "·";
+
+    const filename = document.createElement("span");
+    filename.id = "__dr-header-filename__";
+    filename.textContent = fileName;
+
+    const filepath = document.createElement("span");
+    filepath.id = "__dr-header-path__";
+    filepath.textContent = FILE_PATH;
+    filepath.title = FILE_PATH; // full path on hover for truncated displays
+
+    header.appendChild(brand);
+    header.appendChild(sep);
+    header.appendChild(filename);
+    header.appendChild(filepath);
+
+    document.body.prepend(header);
   }
 
   // ─── Sidebar DOM ──────────────────────────────────────────────────────────
@@ -556,6 +609,7 @@
 
   // ─── Init ─────────────────────────────────────────────────────────────────
   injectStyles();
+  injectHeader();
   injectSidebar();
   refreshComments();
 })();

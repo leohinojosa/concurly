@@ -63,7 +63,9 @@ async function cmdOpen(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const portedScript = clientScript.replace('"__PORT__"', String(port));
+  const portedScript = clientScript
+    .replace('"__PORT__"', String(port))
+    .replace('"__FILE_PATH__"', JSON.stringify(htmlPath));
   const tmpClientPath = path.join(os.tmpdir(), "docreview-client.js");
   fs.writeFileSync(tmpClientPath, portedScript, "utf-8");
 

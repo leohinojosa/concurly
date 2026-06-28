@@ -10,7 +10,8 @@ Usage: `/docreview-open <path-to-file.html>`
 
 Steps:
 1. Run `docreview open <path>` in the shell
-2. Tell the user the browser has opened and they can:
+2. Tell the user the browser has opened with a dark header bar at the top showing the app
+   name ("docreview"), the filename, and the full file path. They can also:
    - Click any element to leave a comment
    - Hover over elements to highlight them (brighter indigo outline = element has open comments; faint outline = no comments)
    - Use the sidebar panel (right edge) to see all open comment threads
