@@ -613,11 +613,8 @@
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === "reload") {
-          // Refresh comments immediately so any resolves the agent already
-          // completed are reflected, then reload after a delay to let the
-          // agent finish any in-flight resolves before the page reinitializes.
-          refreshComments();
-          setTimeout(() => window.location.reload(), 1500);
+          sessionStorage.setItem("__dr_live_reloaded__", "true");
+          window.location.reload();
         }
       } catch (e) {}
     };
@@ -690,5 +687,11 @@
   injectSidebar();
   connectReloadSocket();
   refreshComments();
-  setTimeout(refreshComments, 1000);
+
+  // After a live reload, poll a few more times to catch comments the agent
+  // resolves after the file write (which is what triggers the reload).
+  if (sessionStorage.getItem("__dr_live_reloaded__") === "true") {
+    sessionStorage.removeItem("__dr_live_reloaded__");
+    [800, 1800, 3200].forEach((d) => setTimeout(refreshComments, d));
+  }
 })();
