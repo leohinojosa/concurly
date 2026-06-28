@@ -327,9 +327,13 @@
       actionsEl.style.display = "";
     };
 
-    cancelBtn.addEventListener("click", cleanup);
+    cancelBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      cleanup();
+    });
 
-    saveBtn.addEventListener("click", async () => {
+    saveBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
       const newBody = textarea.value.trim();
       if (!newBody || newBody === original) {
         cleanup();
