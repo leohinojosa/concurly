@@ -1,17 +1,17 @@
-# docreview — Phase 1 Build Specification
+# concurly — Phase 1 Build Specification
 > Feed this document to your LLM code generator as the sole source of truth for Phase 1.
 
 ---
 
 ## Project Overview
 
-You are building **docreview** — a local CLI tool that serves an HTML file in the browser with an injected comment layer, stores comments as JSON, and exposes a CLI interface for an AI agent (Claude Code) to read and resolve those comments.
+You are building **concurly** — a local CLI tool that serves an HTML file in the browser with an injected comment layer, stores comments as JSON, and exposes a CLI interface for an AI agent (Claude Code) to read and resolve those comments.
 
 This is Phase 1 only. The goal is a working end-to-end loop:
-- User runs `docreview open design.html`
+- User runs `concurly open design.html`
 - Browser opens, user clicks an element, types a comment, submits it
-- Developer runs `docreview agent list` in terminal — sees all open comments as JSON
-- Developer runs `docreview agent resolve <id>` — comment marked resolved
+- Developer runs `concurly review` in terminal — sees all open comments as JSON
+- Developer runs `concurly agent resolve <id>` — comment marked resolved
 - Browser reflects the change without full page reload
 
 No UI polish, no sidebar panel, no live reload of the HTML file on disk change. Those are Phase 2+.
@@ -32,7 +32,7 @@ No UI polish, no sidebar panel, no live reload of the HTML file on disk change. 
 ## Project Structure
 
 ```
-docreview/
+concurly/
 ├── package.json
 ├── tsconfig.json
 ├── src/
@@ -52,12 +52,12 @@ docreview/
 
 ```json
 {
-  "name": "docreview",
+  "name": "concurly",
   "version": "0.1.0",
   "description": "Local HTML design review tool with AI agent comment loop",
   "main": "dist/cli.js",
   "bin": {
-    "docreview": "dist/cli.js"
+    "concurly": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -177,7 +177,7 @@ This file is injected verbatim into the served HTML page via a `<script>` tag. I
 
 1. **On load**: fetch `GET /comments` and render badges on anchored elements (Phase 1: just a console.log is acceptable — badge rendering is Phase 2)
 2. **On element click**:
-   - Ignore clicks on the injected comment UI itself (check `event.target.closest('#__docreview__')`)
+   - Ignore clicks on the injected comment UI itself (check `event.target.closest('#__concurly__')`)
    - Compute a CSS selector path for `event.target`
    - Capture `event.target.innerText.slice(0, 120)` as the excerpt
    - Show a minimal floating input UI near the click coordinates
@@ -214,11 +214,11 @@ This file is injected verbatim into the served HTML page via a `<script>` tag. I
   }
 
   function showCommentBox(x, y, selector, excerpt) {
-    const existing = document.getElementById("__docreview__");
+    const existing = document.getElementById("__concurly__");
     if (existing) existing.remove();
 
     const box = document.createElement("div");
-    box.id = "__docreview__";
+    box.id = "__concurly__";
     box.style.cssText = `
       position: fixed;
       top: ${Math.min(y, window.innerHeight - 180)}px;
@@ -281,7 +281,7 @@ This file is injected verbatim into the served HTML page via a `<script>` tag. I
   }
 
   document.addEventListener("click", (e) => {
-    if (e.target.closest("#__docreview__")) return;
+    if (e.target.closest("#__concurly__")) return;
     const selector = getSelector(e.target);
     const excerpt = (e.target.innerText || e.target.textContent || "").trim().slice(0, 120);
     showCommentBox(e.clientX + 8, e.clientY + 8, selector, excerpt);
@@ -290,7 +290,7 @@ This file is injected verbatim into the served HTML page via a `<script>` tag. I
   // Keyboard: Escape closes the box
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      const box = document.getElementById("__docreview__");
+      const box = document.getElementById("__concurly__");
       if (box) box.remove();
     }
   });
@@ -409,20 +409,20 @@ Entry point. Parses `process.argv` and dispatches to one of three commands.
 
 ### Commands
 
-#### `docreview open <file.html>`
+#### `concurly open <file.html>`
 1. Validate the file exists — exit with clear error if not
 2. Find a free port starting at 5391
 3. Read `src/client.js` from disk, replace `"__PORT__"` with the actual port string
-4. Write the port-replaced script to a temp path (`os.tmpdir()/docreview-client.js`) so the server can read it
+4. Write the port-replaced script to a temp path (`os.tmpdir()/concurly-client.js`) so the server can read it
 5. Start the Express server on the chosen port
 6. Open the browser to `http://localhost:<port>` using the `open` package
-7. Print: `docreview running on http://localhost:<port>` and `Comments stored at: <storePath>`
+7. Print: `concurly running on http://localhost:<port>` and `Comments stored at: <storePath>`
 8. Keep the process alive (the server keeps it alive)
 
-#### `docreview agent list`
+#### `concurly review`
 - Find the store path (requires knowing which HTML file is being reviewed)
 - **Problem**: the `open` command and the `agent list` command run in separate processes — the server process doesn't share memory with the CLI process
-- **Solution**: write a small state file to `os.tmpdir()/docreview-state.json` when `open` runs, containing `{ htmlPath, storePath, port }`. The `agent list` command reads this file.
+- **Solution**: write a small state file to `os.tmpdir()/concurly-state.json` when `open` runs, containing `{ htmlPath, storePath, port }`. The `agent list` command reads this file.
 - Read comments from the store, filter to `status === "open"`, print as JSON to stdout
 - Output format:
 ```json
@@ -440,7 +440,7 @@ Entry point. Parses `process.argv` and dispatches to one of three commands.
 }
 ```
 
-#### `docreview agent resolve <id>`
+#### `concurly agent resolve <id>`
 - Read state file to get store path
 - Call `resolveComment(storePath, id)`
 - Print: `Resolved comment <id>` or `Comment not found`
@@ -464,7 +464,7 @@ async function openBrowser(url: string) {
 
 ## State File
 
-Written to `os.tmpdir()/docreview-state.json` when `docreview open` runs:
+Written to `os.tmpdir()/concurly-state.json` when `concurly open` runs:
 
 ```json
 {
@@ -494,9 +494,9 @@ This is how `agent list` and `agent resolve` find the active session without nee
 
 | Scenario | Behavior |
 |----------|----------|
-| `docreview open` called with non-existent file | Print error and exit with code 1 |
-| `docreview agent list` called with no active session | Print `No active docreview session. Run: docreview open <file.html>` and exit 1 |
-| `docreview agent resolve <id>` with unknown id | Print `Comment not found: <id>` and exit 1 |
+| `concurly open` called with non-existent file | Print error and exit with code 1 |
+| `concurly review` called with no active session | Print `No active concurly session. Run: concurly open <file.html>` and exit 1 |
+| `concurly agent resolve <id>` with unknown id | Print `Comment not found: <id>` and exit 1 |
 | Port 5391–5401 all in use | Print error suggesting a manual port flag (Phase 2 feature) and exit 1 |
 | HTML file cannot be read | Print the OS error message and exit 1 |
 
@@ -504,35 +504,35 @@ This is how `agent list` and `agent resolve` find the active session without nee
 
 ## Claude Code Skill File
 
-Create this file at `skills/docreview/SKILL.md` in the project root. This is what gets installed into Claude Code via `npx skills add`.
+Create this file at `skills/concurly/SKILL.md` in the project root. This is what gets installed into Claude Code via `npx skills add`.
 
 ````markdown
-# docreview
+# concurly
 
 Review HTML design documents with inline comments and resolve them as an agent.
 
-## /docreview-open
+## /concurly open
 
 Opens an HTML design file in the browser with the comment layer active.
 
-Usage: `/docreview-open <path-to-file.html>`
+Usage: `/concurly open <path-to-file.html>`
 
 Steps:
-1. Run `docreview open <path>` in the shell
+1. Run `concurly open <path>` in the shell
 2. Tell the user the browser has opened and they can click any element to leave a comment
-3. Remind them to run `/docreview-review` when ready for you to address the comments
+3. Remind them to run `/concurly review` when ready for you to address the comments
 
-## /docreview-review
+## /concurly review
 
 Reads all open comments on the active HTML file and addresses each one.
 
 Steps:
-1. Run `docreview agent list` and parse the JSON output
+1. Run `concurly review` and parse the JSON output
 2. For each comment in `openComments`:
    a. Read the `selector` and `excerpt` to identify which element is being commented on
    b. Open the HTML file on disk and locate the element matching the selector
    c. Apply the change described in `body`
-   d. Run `docreview agent resolve <id>` to mark it resolved
+   d. Run `concurly agent resolve <id>` to mark it resolved
 3. After all comments are addressed, tell the user what was changed and ask them to refresh the browser to review
 ````
 
@@ -549,7 +549,7 @@ npm run build
 npm install -g .
 
 # Verify
-docreview --help
+concurly --help
 ```
 
 After `npm run build`, the `dist/` folder must contain:
@@ -589,9 +589,9 @@ Do not implement the following — they are explicitly Phase 2+:
 The following scenario must work end to end on Windows:
 
 1. `npm install && npm run build && npm install -g .` completes without errors
-2. `docreview open C:\path\to\design.html` opens the browser
+2. `concurly open C:\path\to\design.html` opens the browser
 3. Clicking an `<h1>` element in the browser shows the comment box
 4. Typing a comment and clicking Submit stores it in `design.comments.json`
-5. `docreview agent list` in a new terminal prints the comment as JSON
-6. `docreview agent resolve <id>` marks it resolved
-7. `docreview agent list` now returns an empty `openComments` array
+5. `concurly review` in a new terminal prints the comment as JSON
+6. `concurly agent resolve <id>` marks it resolved
+7. `concurly review` now returns an empty `openComments` array

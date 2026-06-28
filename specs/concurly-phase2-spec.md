@@ -1,4 +1,4 @@
-# docreview — Phase 2 Implementation Specification
+# concurly — Phase 2 Implementation Specification
 > Feed this document to your LLM code generator after Phase 1 is complete and working.
 > Phase 1 must be fully functional before starting Phase 2.
 
@@ -37,7 +37,7 @@ Same as Phase 1:
 ## Files Changed or Added in Phase 2
 
 ```
-docreview/
+concurly/
 ├── src/
 │   ├── cli.ts           ← Add FILE_PATH placeholder replacement at inject time
 │   ├── server.ts        ← Add PATCH /comments/:id and DELETE /comments/:id
@@ -46,7 +46,7 @@ docreview/
 ├── package.json         ← No changes
 ├── tsconfig.json        ← No changes
 └── skills/
-    └── docreview/
+    └── concurly/
         └── SKILL.md     ← Updated to document sidebar actions and header bar
 ```
 
@@ -57,7 +57,7 @@ docreview/
 ### Behavior
 
 A thin fixed bar is injected at the top of every served page. It shows:
-- The app brand name **"docreview"** on the left
+- The app brand name **"concurly"** on the left
 - A visual separator `·`
 - The **filename** (basename only, bold white)
 - The **full file path** (muted smaller text, truncated with ellipsis on long paths; full path
@@ -89,7 +89,7 @@ const FILE_PATH = "__FILE_PATH__"; // replaced at inject time by cli.ts
 
 ```html
 <div id="__dr-header__">
-  <span id="__dr-header-brand__">docreview</span>
+  <span id="__dr-header-brand__">concurly</span>
   <span id="__dr-header-sep__">·</span>
   <span id="__dr-header-filename__">design.html</span>
   <span id="__dr-header-path__">/full/path/to/design.html</span>
@@ -275,7 +275,7 @@ saveBtn.addEventListener("click", async (e) => {
 
 ```javascript
 document.addEventListener("click", (e) => {
-  if (e.target.closest("#__docreview__")) return;
+  if (e.target.closest("#__concurly__")) return;
   if (e.target.closest("#__dr-sidebar__")) return;
 
   const selector = getSelector(e.target);
@@ -384,7 +384,7 @@ Two distinct hover classes for annotated vs. plain elements:
 let hoveredEl = null;
 
 document.addEventListener("mouseover", (e) => {
-  if (e.target.closest("#__dr-sidebar__") || e.target.closest("#__docreview__")) return;
+  if (e.target.closest("#__dr-sidebar__") || e.target.closest("#__concurly__")) return;
   if (hoveredEl) {
     hoveredEl.classList.remove("__dr-highlight__");
     hoveredEl.classList.remove("__dr-highlight--annotated__");
@@ -419,10 +419,10 @@ refreshComments();
 
 ## Phase 2 Definition of Done
 
-1. `docreview open design.html` opens browser; a dark header bar appears at the top showing
-   **"docreview · design.html /full/path/to/design.html"**
+1. `concurly open design.html` opens browser; a dark header bar appears at the top showing
+   **"concurly · design.html /full/path/to/design.html"**
 2. The filename is bold white; the full path is smaller muted text (truncated on long paths,
-   full path on hover); the brand "docreview" is indigo monospace
+   full path on hover); the brand "concurly" is indigo monospace
 3. Two comments from a Phase 1 session show purple badges on their respective elements
 4. Hovering any element shows a faint outline; elements with comments show a brighter outline
 5. Clicking an element with a badge opens the sidebar scrolled to that thread

@@ -1,4 +1,4 @@
-# docreview — Phase 3 Implementation Specification
+# concurly — Phase 3 Implementation Specification
 > Feed this document to your LLM code generator after Phase 2 is complete and working.
 > Phase 1 and Phase 2 must be fully functional before starting Phase 3.
 
@@ -6,7 +6,7 @@
 
 ## Phase 3 Goals
 
-Phase 3 adds the features that make docreview a complete, reusable tool rather than a
+Phase 3 adds the features that make concurly a complete, reusable tool rather than a
 single-session utility. The four objectives are:
 
 1. **Live reload** — when Claude Code edits the HTML file on disk, the browser auto-refreshes
@@ -15,7 +15,7 @@ single-session utility. The four objectives are:
    so the user can audit what the agent changed
 3. **Multi-file support** — review a design system with multiple HTML files from one running
    server, switching between them in the sidebar
-4. **Polish** — `--port` CLI flag, `docreview --help`, comment export as Markdown, keyboard
+4. **Polish** — `--port` CLI flag, `concurly --help`, comment export as Markdown, keyboard
    shortcuts, error handling hardening
 
 Phase 3 does not change the core comment data model, the REST API shape, or the agent nudge
@@ -49,17 +49,17 @@ detecting external edits.
 ## Files Changed or Added in Phase 3
 
 ```
-docreview/
+concurly/
 ├── src/
-│   ├── cli.ts           ← Add --port flag, --help, docreview export command
+│   ├── cli.ts           ← Add --port flag, --help, concurly export command
 │   ├── server.ts        ← Add chokidar watcher, WebSocket live reload, multi-file support
 │   ├── store.ts         ← No changes
 │   ├── watcher.ts       ← New: chokidar wrapper that broadcasts reload via WebSocket
 │   └── client.js        ← Add WebSocket reconnect, resolved history toggle, keyboard shortcuts
 ├── package.json         ← Add chokidar
 └── skills/
-    └── docreview/
-        └── SKILL.md     ← Add /docreview-history and /docreview-export skill entries
+    └── concurly/
+        └── SKILL.md     ← Add /concurly-history and /concurly-export skill entries
 ```
 
 ---
@@ -94,7 +94,7 @@ export function createWatcher(htmlPaths: string[], wss: WebSocketServer): void {
   });
 
   watcher.on("change", (changedPath) => {
-    console.log(`[docreview] File changed: ${changedPath} — reloading browsers`);
+    console.log(`[concurly] File changed: ${changedPath} — reloading browsers`);
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify({ type: "reload", file: changedPath }));
@@ -103,7 +103,7 @@ export function createWatcher(htmlPaths: string[], wss: WebSocketServer): void {
   });
 
   watcher.on("error", (err) => {
-    console.error(`[docreview] Watcher error: ${err.message}`);
+    console.error(`[concurly] Watcher error: ${err.message}`);
   });
 }
 ```
@@ -128,7 +128,7 @@ const wss = new WebSocketServer({ server: httpServer });
 
 // Replace app.listen with:
 httpServer.listen(port, "127.0.0.1", () => {
-  console.log(`docreview running on http://localhost:${port}`);
+  console.log(`concurly running on http://localhost:${port}`);
 });
 
 // Start watcher after server is up
@@ -151,7 +151,7 @@ function connectReloadSocket() {
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
     if (msg.type === "reload") {
-      console.log("[docreview] File changed, reloading…");
+      console.log("[concurly] File changed, reloading…");
       window.location.reload();
     }
   };
@@ -171,7 +171,7 @@ connectReloadSocket();
 ```
 
 The reconnect loop means the browser will automatically re-attach after a server restart,
-which is useful during `docreview` development itself.
+which is useful during `concurly` development itself.
 
 ---
 
@@ -295,16 +295,16 @@ operation.
 
 ### Overview
 
-Instead of `docreview open <file.html>` accepting a single file, it can now accept a
+Instead of `concurly open <file.html>` accepting a single file, it can now accept a
 directory or a glob pattern. All matching HTML files are served, watched, and reviewed under
 a single running server. The sidebar gains a file picker at the top.
 
 ### CLI changes
 
 ```
-docreview open design.html            # Single file (Phase 1/2 behavior, unchanged)
-docreview open designs/               # All .html files in a directory
-docreview open designs/*.html         # Explicit glob
+concurly open design.html            # Single file (Phase 1/2 behavior, unchanged)
+concurly open designs/               # All .html files in a directory
+concurly open designs/*.html         # Explicit glob
 ```
 
 The state file gains a `htmlPaths` array field (replacing the single `htmlPath`):
@@ -397,7 +397,7 @@ app.get("/comments/summary", (_req, res) => {
 });
 ```
 
-### `docreview agent list` with multi-file
+### `concurly review` with multi-file
 
 Without a `--file` flag, `agent list` returns open comments across all files:
 
@@ -428,7 +428,7 @@ With `--file auth-flow`, returns only that file's comments.
 ### 4a. `--port` CLI flag
 
 ```
-docreview open design.html --port 8080
+concurly open design.html --port 8080
 ```
 
 In `cli.ts`, parse `--port` from `process.argv`. If provided, use that port directly without
@@ -442,31 +442,31 @@ const portArg = process.argv.includes("--port")
 const port = portArg ?? await findFreePort(5391);
 ```
 
-### 4b. `docreview --help`
+### 4b. `concurly --help`
 
 ```
-docreview --help
+concurly --help
 ```
 
 Print a usage summary to stdout and exit 0. No external library needed — plain `console.log`.
 
 ```
-docreview — local HTML design review tool
+concurly — local HTML design review tool
 
 Commands:
-  docreview open <file.html>           Serve a file and open the browser
-  docreview open <directory/>          Serve all HTML files in a directory
-  docreview agent list                 Print open comments as JSON
-  docreview agent list --file <slug>   Open comments for a specific file
-  docreview agent resolve <id>         Mark a comment as resolved
-  docreview export                     Export open comments as Markdown
+  concurly open <file.html>           Serve a file and open the browser
+  concurly open <directory/>          Serve all HTML files in a directory
+  concurly review                 Print open comments as JSON
+  concurly review --file <slug>   Open comments for a specific file
+  concurly agent resolve <id>         Mark a comment as resolved
+  concurly export                     Export open comments as Markdown
 
 Options:
   --port <number>    Use a specific port instead of auto-selecting from 5391
   --help             Show this help message
 ```
 
-### 4c. `docreview export` command
+### 4c. `concurly export` command
 
 Exports all open comments to a Markdown file next to the HTML file. Useful for pasting into
 Claude Code chat when you do not want to use the agent nudge button.
@@ -529,7 +529,7 @@ browser without reaching for the sidebar button.
 ```javascript
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    const box = document.getElementById("__docreview__");
+    const box = document.getElementById("__concurly__");
     if (box) { box.remove(); return; }
     const sidebar = document.getElementById("__dr-sidebar__");
     if (sidebar) sidebar.classList.toggle("collapsed");
@@ -547,7 +547,7 @@ document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.shiftKey && e.key === "E") {
     e.preventDefault();
     fetch(`http://localhost:${PORT}/export`).then(r => r.json()).then(d => {
-      console.log(`[docreview] Exported to: ${d.path}`);
+      console.log(`[concurly] Exported to: ${d.path}`);
     });
   }
 });
@@ -582,65 +582,65 @@ All three phases accumulate error cases. Phase 3 adds formal error handling for:
 | HTML file deleted while server is running | Serve a `404` HTML page that says the file was moved or deleted, with the path |
 | Comment JSON file corrupted (invalid JSON) | Print warning, treat as empty, do not crash server |
 | WebSocket connection lost (server restart) | Client auto-reconnects every 2 seconds (implemented in Feature 1) |
-| `docreview agent resolve` called with already-resolved ID | Print `Comment abc-123 is already resolved` and exit 0 (not 1) |
+| `concurly agent resolve` called with already-resolved ID | Print `Comment abc-123 is already resolved` and exit 0 (not 1) |
 | glob pattern matches no files | Print `No HTML files found matching: <pattern>` and exit 1 |
 
 ---
 
 ## Updated Claude Code Skill File (full replacement)
 
-Replace `skills/docreview/SKILL.md` with this complete version:
+Replace `skills/concurly/SKILL.md` with this complete version:
 
 ````markdown
-# docreview
+# concurly
 
 Review HTML design documents with inline comments and resolve them as an agent.
 Works with single files and multi-file design systems.
 
-## /docreview-open
+## /concurly open
 
 Opens one or more HTML design files in the browser with the comment layer active.
 
 Usage:
-  /docreview-open design.html
-  /docreview-open designs/
-  /docreview-open designs/ --port 8080
+  /concurly open design.html
+  /concurly open designs/
+  /concurly open designs/ --port 8080
 
 Steps:
-1. Run `docreview open <path>` in the shell
+1. Run `concurly open <path>` in the shell
 2. Tell the user the browser has opened and they can click any element to leave a comment
 3. Mention the keyboard shortcut Ctrl+Shift+R to trigger a review from within the browser
-4. Remind them to run `/docreview-review` when ready for you to address the comments
+4. Remind them to run `/concurly review` when ready for you to address the comments
 
-## /docreview-review
+## /concurly review
 
 Reads all open comments on the active HTML file(s) and addresses each one.
 
 Steps:
-1. Run `docreview agent list` and parse the JSON output
+1. Run `concurly review` and parse the JSON output
 2. For each file in the `files` array:
    a. For each comment in `openComments`:
       i.  Read the `selector` and `excerpt` to locate the element in the HTML
       ii. Read the `body` to understand what to change
       iii. Open the HTML file on disk and apply the change
-      iv. Run `docreview agent resolve <id>` to mark it resolved
+      iv. Run `concurly agent resolve <id>` to mark it resolved
 3. The browser will auto-reload after each file save (live reload is active)
 4. After all comments are addressed, report what was changed per file
 
-## /docreview-history
+## /concurly-history
 
 Shows all resolved comments for the active session.
 
 Steps:
-1. Run `docreview agent list` and look at resolved comments (status: "resolved")
+1. Run `concurly review` and look at resolved comments (status: "resolved")
 2. Summarize what was changed, when, and on which elements
 
-## /docreview-export
+## /concurly-export
 
 Exports open comments to a Markdown file and copies the path to clipboard.
 
 Steps:
-1. Run `docreview export` in the shell
+1. Run `concurly export` in the shell
 2. Tell the user the file path and that it has been copied to their clipboard
 3. They can paste it into a Claude Code chat with @ to reference it directly
 ````
@@ -658,12 +658,12 @@ already set to compile all `src/**/*.ts` files. The `postbuild` copy command rem
 
 ```json
 {
-  "name": "docreview",
+  "name": "concurly",
   "version": "0.3.0",
   "description": "Local HTML design review tool with AI agent comment loop",
   "main": "dist/cli.js",
   "bin": {
-    "docreview": "dist/cli.js"
+    "concurly": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -694,16 +694,16 @@ already set to compile all `src/**/*.ts` files. The `postbuild` copy command rem
 
 The following scenarios must all work end to end:
 
-1. `docreview open designs/` opens the browser showing the first HTML file; file tabs in the
+1. `concurly open designs/` opens the browser showing the first HTML file; file tabs in the
    sidebar show all discovered files with their open comment counts
 2. Clicking a different file tab navigates to that file and shows its comments
 3. Claude Code edits `auth-flow.html` on disk — the browser automatically reloads within
    ~500ms and re-renders badges without any user action
 4. The "Show resolved" toggle reveals greyed-out resolved threads below open ones
 5. `Ctrl + Shift + R` in the browser triggers the agent nudge without clicking the button
-6. `docreview export` writes a Markdown file and the path is on the clipboard
-7. `docreview open designs/ --port 8080` starts on the specified port
-8. `docreview --help` prints the usage summary and exits
+6. `concurly export` writes a Markdown file and the path is on the clipboard
+7. `concurly open designs/ --port 8080` starts on the specified port
+8. `concurly --help` prints the usage summary and exits
 9. Deleting the HTML file while the server is running shows a graceful error page in the
    browser, not a server crash
 10. Corrupting `design.comments.json` while the server is running does not crash the server —
