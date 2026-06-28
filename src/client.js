@@ -47,6 +47,15 @@
       #__dr-collapse__ {
         background: none; border: none; cursor: pointer; font-size: 16px; color: #6b7280;
       }
+      #__dr-toggle-bar__ {
+        padding: 6px 16px; border-bottom: 1px solid #e5e7eb;
+        font-size: 12px; color: #6b7280;
+      }
+      #__dr-toggle-bar__ label {
+        cursor: pointer; display: flex; align-items: center;
+        gap: 6px; user-select: none;
+      }
+      #__dr-show-resolved__ { cursor: pointer; }
       #__dr-sidebar-body__ {
         flex: 1; overflow-y: auto; padding: 12px;
         display: flex; flex-direction: column; gap: 10px;
@@ -55,6 +64,9 @@
         border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px;
         background: #fafafa;
       }
+      .__dr-thread-resolved__ {
+        opacity: 0.5; border-color: #e5e7eb; background: #f9fafb;
+      }
       .__dr-thread-selector__ {
         font-size: 10px; color: #9ca3af; font-family: monospace;
         margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -62,6 +74,7 @@
       .__dr-thread-excerpt__ {
         font-style: italic; color: #6b7280; font-size: 11px; margin-bottom: 6px;
       }
+      .__dr-thread-resolved__ .__dr-thread-excerpt__ { text-decoration: line-through; }
       .__dr-thread-body__ { color: #111; margin-bottom: 8px; line-height: 1.4; }
       .__dr-thread-actions__ { display: flex; gap: 6px; flex-wrap: wrap; }
       .__dr-scroll-btn__, .__dr-resolve-btn__, .__dr-edit-btn__, .__dr-delete-btn__ {
@@ -90,6 +103,7 @@
         font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
         border: 1px solid #d1d5db; background: #f9fafb; color: #374151;
       }
+      .__dr-resolved-label__ { font-size: 10px; color: #6b7280; margin-top: 4px; }
       .__dr-highlight__ {
         outline: 2px solid #a5b4fc !important;
         outline-offset: 2px !important;
@@ -116,9 +130,7 @@
         font-size: 13px; letter-spacing: 0.05em; flex-shrink: 0;
       }
       #__dr-header-sep__ { color: #52525b; flex-shrink: 0; }
-      #__dr-header-filename__ {
-        color: #f4f4f5; font-weight: 600; flex-shrink: 0;
-      }
+      #__dr-header-filename__ { color: #f4f4f5; font-weight: 600; flex-shrink: 0; }
       #__dr-header-path__ {
         color: #71717a; font-size: 11px;
         overflow: hidden; text-overflow: ellipsis; min-width: 0;
@@ -129,7 +141,6 @@
 
   // ─── Header bar ───────────────────────────────────────────────────────────
   function injectHeader() {
-    // Extract just the filename from the full path (works for both / and \ separators)
     const fileName = FILE_PATH.replace(/.*[\\/]/, "") || FILE_PATH;
 
     const header = document.createElement("div");
@@ -150,7 +161,7 @@
     const filepath = document.createElement("span");
     filepath.id = "__dr-header-path__";
     filepath.textContent = FILE_PATH;
-    filepath.title = FILE_PATH; // full path on hover for truncated displays
+    filepath.title = FILE_PATH;
 
     header.appendChild(brand);
     header.appendChild(sep);
@@ -165,6 +176,7 @@
     const sidebar = document.createElement("div");
     sidebar.id = "__dr-sidebar__";
 
+    // Header row
     const header = document.createElement("div");
     header.id = "__dr-sidebar-header__";
 
@@ -179,10 +191,35 @@
     header.appendChild(title);
     header.appendChild(collapseBtn);
 
+    // Toggle bar — sits between header and body
+    const toggleBar = document.createElement("div");
+    toggleBar.id = "__dr-toggle-bar__";
+
+    const toggleLabel = document.createElement("label");
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = "__dr-show-resolved__";
+    checkbox.checked = sessionStorage.getItem("__dr_show_resolved__") === "true";
+    checkbox.addEventListener("change", () => {
+      sessionStorage.setItem("__dr_show_resolved__", String(checkbox.checked));
+      refreshComments();
+    });
+
+    const toggleText = document.createElement("span");
+    toggleText.innerHTML = 'Show resolved (<span id="__dr-resolved-count__">0</span>)';
+
+    toggleLabel.appendChild(checkbox);
+    toggleLabel.appendChild(toggleText);
+    toggleBar.appendChild(toggleLabel);
+
+    // Thread list body
     const body = document.createElement("div");
     body.id = "__dr-sidebar-body__";
 
+    // Order: header → toggleBar → body
     sidebar.appendChild(header);
+    sidebar.appendChild(toggleBar);
     sidebar.appendChild(body);
 
     document.body.appendChild(sidebar);
@@ -217,7 +254,6 @@
   function scrollSidebarToSelector(selector) {
     const body = document.getElementById("__dr-sidebar-body__");
     if (!body) return;
-    // Compare dataset directly — avoids attribute-selector escaping issues
     for (const card of body.querySelectorAll(".__dr-thread__")) {
       if (card.dataset.selector === selector) {
         card.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -226,7 +262,7 @@
     }
   }
 
-  // ─── Comment box (Phase 1 behavior, unchanged) ───────────────────────────
+  // ─── Comment box ─────────────────────────────────────────────────────────
   function showCommentBox(x, y, selector, excerpt) {
     const existing = document.getElementById("__docreview__");
     if (existing) existing.remove();
@@ -351,7 +387,6 @@
     const actionsEl = card.querySelector(".__dr-thread-actions__");
     if (!bodyEl || !actionsEl) return;
 
-    // Guard: prevent opening two edit areas on the same card
     if (card.querySelector(".__dr-edit-area__")) return;
 
     const original = bodyEl.textContent;
@@ -417,47 +452,41 @@
     textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
   }
 
-  // ─── Sidebar thread list ──────────────────────────────────────────────────
-  function renderSidebar(comments) {
-    const body = document.getElementById("__dr-sidebar-body__");
-    const countEl = document.getElementById("__dr-count__");
-    if (!body) return;
+  // ─── Thread card builder ──────────────────────────────────────────────────
+  function buildThreadCard(comment, isResolved) {
+    const card = document.createElement("div");
+    card.className = "__dr-thread__" + (isResolved ? " __dr-thread-resolved__" : "");
+    card.dataset.id = comment.id;
+    card.dataset.selector = comment.selector;
 
-    const openComments = comments.filter((c) => c.status === "open");
-    if (countEl) countEl.textContent = String(openComments.length);
+    const selectorEl = document.createElement("div");
+    selectorEl.className = "__dr-thread-selector__";
+    selectorEl.textContent = comment.selector;
 
-    body.innerHTML = "";
-
-    if (openComments.length === 0) {
-      const empty = document.createElement("div");
-      empty.style.cssText =
-        "color: #9ca3af; font-size: 13px; padding: 12px 0; text-align: center;";
-      empty.textContent = "No open comments";
-      body.appendChild(empty);
-      return;
+    const excerptEl = document.createElement("div");
+    excerptEl.className = "__dr-thread-excerpt__";
+    if (comment.excerpt) {
+      const truncated = comment.excerpt.slice(0, 80);
+      excerptEl.textContent = `"${truncated}${comment.excerpt.length > 80 ? "…" : ""}"`;
     }
 
-    openComments.forEach((comment) => {
-      const card = document.createElement("div");
-      card.className = "__dr-thread__";
-      card.dataset.id = comment.id;
-      card.dataset.selector = comment.selector;
+    const bodyEl = document.createElement("div");
+    bodyEl.className = "__dr-thread-body__";
+    bodyEl.textContent = comment.body;
 
-      const selectorEl = document.createElement("div");
-      selectorEl.className = "__dr-thread-selector__";
-      selectorEl.textContent = comment.selector;
+    card.appendChild(selectorEl);
+    card.appendChild(excerptEl);
+    card.appendChild(bodyEl);
 
-      const excerptEl = document.createElement("div");
-      excerptEl.className = "__dr-thread-excerpt__";
-      if (comment.excerpt) {
-        const truncated = comment.excerpt.slice(0, 80);
-        excerptEl.textContent = `"${truncated}${comment.excerpt.length > 80 ? "…" : ""}"`;
-      }
-
-      const bodyEl = document.createElement("div");
-      bodyEl.className = "__dr-thread-body__";
-      bodyEl.textContent = comment.body;
-
+    if (isResolved) {
+      const resolvedLabel = document.createElement("div");
+      resolvedLabel.className = "__dr-resolved-label__";
+      const dateStr = comment.resolvedAt
+        ? new Date(comment.resolvedAt).toLocaleString()
+        : "resolved";
+      resolvedLabel.textContent = `Resolved ${dateStr}`;
+      card.appendChild(resolvedLabel);
+    } else {
       const actions = document.createElement("div");
       actions.className = "__dr-thread-actions__";
 
@@ -515,14 +544,10 @@
       actions.appendChild(editBtn);
       actions.appendChild(resolveBtn);
       actions.appendChild(deleteBtn);
-
-      card.appendChild(selectorEl);
-      card.appendChild(excerptEl);
-      card.appendChild(bodyEl);
       card.appendChild(actions);
+    }
 
-      body.appendChild(card);
-    });
+    return card;
   }
 
   // ─── Refresh (central update entry point) ─────────────────────────────────
@@ -530,27 +555,76 @@
     fetch(`http://localhost:${PORT}/comments`)
       .then((r) => r.json())
       .then((comments) => {
+        const open = comments.filter((c) => c.status === "open");
+        const resolved = comments.filter((c) => c.status === "resolved");
+        const showResolved = sessionStorage.getItem("__dr_show_resolved__") === "true";
+
         // Rebuild selector index for open comments
         openCommentsBySelector = {};
-        comments
-          .filter((c) => c.status === "open")
-          .forEach((c) => {
-            if (!openCommentsBySelector[c.selector]) {
-              openCommentsBySelector[c.selector] = [];
-            }
-            openCommentsBySelector[c.selector].push(c);
-          });
+        open.forEach((c) => {
+          if (!openCommentsBySelector[c.selector]) openCommentsBySelector[c.selector] = [];
+          openCommentsBySelector[c.selector].push(c);
+        });
 
-        // Re-render badges
+        // Re-render badges (open comments only)
         clearBadges();
         Object.entries(openCommentsBySelector).forEach(([selector, list]) => {
           injectBadge(selector, list.length);
         });
 
-        // Re-render sidebar
-        renderSidebar(comments);
+        // Update counts
+        const countEl = document.getElementById("__dr-count__");
+        if (countEl) countEl.textContent = String(open.length);
+        const resolvedCountEl = document.getElementById("__dr-resolved-count__");
+        if (resolvedCountEl) resolvedCountEl.textContent = String(resolved.length);
+
+        // Re-render sidebar body
+        const body = document.getElementById("__dr-sidebar-body__");
+        if (!body) return;
+        body.innerHTML = "";
+
+        if (open.length === 0 && (!showResolved || resolved.length === 0)) {
+          const empty = document.createElement("div");
+          empty.style.cssText =
+            "color: #9ca3af; font-size: 13px; padding: 12px 0; text-align: center;";
+          empty.textContent = "No open comments";
+          body.appendChild(empty);
+          return;
+        }
+
+        open.forEach((c) => body.appendChild(buildThreadCard(c, false)));
+        if (showResolved) {
+          resolved.forEach((c) => body.appendChild(buildThreadCard(c, true)));
+        }
       })
       .catch(() => {});
+  }
+
+  // ─── Live reload via WebSocket ─────────────────────────────────────────────
+  function connectReloadSocket() {
+    let ws;
+    try {
+      ws = new WebSocket(`ws://localhost:${PORT}`);
+    } catch (e) {
+      return;
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "reload") {
+          window.location.reload();
+        }
+      } catch (e) {}
+    };
+
+    ws.onclose = () => {
+      setTimeout(connectReloadSocket, 2000);
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
   }
 
   // ─── Event handlers ───────────────────────────────────────────────────────
@@ -579,7 +653,6 @@
     }
   });
 
-  // Two hover states: subtle outline for plain elements, brighter for annotated ones
   document.addEventListener("mouseover", (e) => {
     if (e.target.closest("#__dr-sidebar__") || e.target.closest("#__docreview__")) return;
     if (hoveredEl) {
@@ -611,5 +684,6 @@
   injectStyles();
   injectHeader();
   injectSidebar();
+  connectReloadSocket();
   refreshComments();
 })();

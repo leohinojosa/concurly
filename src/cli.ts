@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 import fs from "fs";
+import http from "http";
 import os from "os";
 import path from "path";
+import { WebSocketServer } from "ws";
 import { createServer, findFreePort } from "./server";
 import { getStorePath, readComments, resolveComment } from "./store";
+import { createWatcher } from "./watcher";
 
 const STATE_FILE = path.join(os.tmpdir(), "docreview-state.json");
 
@@ -72,11 +75,15 @@ async function cmdOpen(args: string[]): Promise<void> {
   const app = createServer(htmlPath, tmpClientPath);
   const storePath = getStorePath(htmlPath);
 
-  app.listen(port, "127.0.0.1", () => {
+  const httpServer = http.createServer(app);
+  const wss = new WebSocketServer({ server: httpServer });
+
+  httpServer.listen(port, "127.0.0.1", () => {
     writeState({ htmlPath, storePath, port, startedAt: new Date().toISOString() });
     const url = `http://localhost:${port}`;
     console.log(`docreview running on ${url}`);
     console.log(`Comments stored at: ${storePath}`);
+    createWatcher([htmlPath], wss);
     openBrowser(url).catch((err) => {
       console.error(`Could not open browser: ${(err as Error).message}`);
       console.log(`Open manually: ${url}`);
