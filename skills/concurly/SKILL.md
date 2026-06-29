@@ -2,6 +2,8 @@
 
 Review software architecture concurrently with an expert AI peer. Open any HTML file in the browser, leave comments on elements, then let the AI apply the fixes and mark them resolved.
 
+**File Type Requirement:** concurly only works with HTML files (`.html`). For markdown (`.md`) or text files (`.txt`), skip concurly and proceed with standard review/editing directly — no user reminder needed.
+
 **Default behavior:** `/concurly <path-to-file.html>` with no subcommand defaults to `/concurly open`. If the user types `/concurly` followed by a file path, treat it as `/concurly open`.
 
 ## Natural Language Triggers
@@ -10,11 +12,19 @@ Recognize these phrases and execute the corresponding command automatically — 
 
 | If the user says anything like… | Run this |
 |---|---|
-| "let's review the design", "open the design", "let's start a review", "let's review the architecture design", "let's review the architecture" | `/concurly open` |
-| "review ready", "review the comments I left", "review the changes", "go ahead and review", "please review my comments" | `/concurly review` |
-| "we concur", "review is complete", "we're done", "that's all the comments", "all done reviewing" | `/concurly complete` |
+| "let's review the design", "open the design", "let's start a review", "let's review the architecture design", "let's review the architecture" | Check file type first; if `.html`, run `/concurly open`; if `.md` or `.txt`, proceed with standard review |
+| "review ready", "review the comments I left", "review the changes", "go ahead and review", "please review my comments" | `/concurly review` (only if concurly is already active) |
+| "we concur", "review is complete", "we're done", "that's all the comments", "all done reviewing" | `/concurly complete` (only if concurly is active) |
 
 When a trigger fires, you **must** know the file path before running `open`. If it hasn't been provided, ask for it first. For `review` and `complete`, use the single running session automatically.
+
+## File Type Check
+
+Before opening any file with concurly:
+1. Inspect the file extension
+2. If `.html` → proceed with `/concurly open`
+3. If `.md`, `.txt`, or other non-HTML → skip concurly entirely and proceed with standard review/editing instead
+4. Do not mention this to the user — handle silently
 
 ## /concurly open
 
