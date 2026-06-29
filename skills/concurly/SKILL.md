@@ -4,6 +4,18 @@ Review software architecture concurrently with an expert AI peer. Open any HTML 
 
 **Default behavior:** `/concurly <path-to-file.html>` with no subcommand defaults to `/concurly open`. If the user types `/concurly` followed by a file path, treat it as `/concurly open`.
 
+## Natural Language Triggers
+
+Recognize these phrases and execute the corresponding command automatically — no explicit `/concurly` invocation needed.
+
+| If the user says anything like… | Run this |
+|---|---|
+| "let's review the design", "open the design", "let's start a review", "let's review the architecture design", "let's review the architecture" | `/concurly open` |
+| "review ready", "review the comments I left", "review the changes", "go ahead and review", "please review my comments" | `/concurly review` |
+| "we concur", "review is complete", "we're done", "that's all the comments", "all done reviewing" | `/concurly complete` |
+
+When a trigger fires, you **must** know the file path before running `open`. If it hasn't been provided, ask for it first. For `review` and `complete`, use the single running session automatically.
+
 ## /concurly open
 
 Opens an HTML design file in the browser with the comment layer active. Each file gets its own server instance and port. If the file is already open, the existing session is reused.
@@ -24,7 +36,7 @@ Steps:
      - **✕ Delete** — permanently removes the comment (only available while open/unresolved)
    - Click a commented element to open the sidebar focused on that thread
    - Collapse/expand the sidebar with the ✕/▶ button; state is remembered per browser tab
-3. Remind them to run `/concurly review` when ready for you to address the comments
+3. Remind them to say "review ready" or run `/concurly review` when ready for you to address the comments
 
 ## /concurly list
 
