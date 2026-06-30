@@ -8,6 +8,8 @@
   let scrollTimer = null;
   let activeTab = "review"; // "review" | "history"
 
+  const COLLAPSE_ICON_SVG = `<svg viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m.5 12.5v-10c0-1.1045695.8954305-2 2-2h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2z"/><path d="m2.5 12.5v-10c0-1.1045695.8954305-2 2-2h-2c-1 0-2 .8954305-2 2v10c0 1.1045695 1 2 2 2h2c-1.1045695 0-2-.8954305-2-2z" fill="currentColor"/><path d="m7.5 10.5-3-3 3-3"/><path d="m12.5 7.5h-8"/></g></svg>`;
+
   const HEADER_H = 45;
   const TABS_H = 40;
   const CHROME_H = HEADER_H + TABS_H; // 85px
@@ -515,13 +517,13 @@
     const title = document.createElement("span");
     title.innerHTML = 'Comments (<span id="__dr-count__">0</span>)';
 
-    const collapseBtn = document.createElement("button");
-    collapseBtn.id = "__dr-collapse__";
-    collapseBtn.textContent = "✕";
-    collapseBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleSidebar(); });
+    const collapseIcon = document.createElement("div");
+    collapseIcon.id = "__dr-collapse-icon__";
+    collapseIcon.innerHTML = COLLAPSE_ICON_SVG;
+    collapseIcon.addEventListener("click", (e) => { e.stopPropagation(); toggleSidebar(); });
 
     header.appendChild(title);
-    header.appendChild(collapseBtn);
+    header.appendChild(collapseIcon);
 
     // Toggle bar — sits between header and body
     const toggleBar = document.createElement("div");
@@ -560,32 +562,21 @@
     const isOpen = sessionStorage.getItem("__dr_sidebar_open__") !== "false";
     if (!isOpen) {
       sidebar.classList.add("collapsed");
-      collapseBtn.textContent = "▶";
     }
-
-    sidebar.addEventListener("click", (e) => {
-      if (!sidebar.classList.contains("collapsed")) return;
-      e.stopPropagation();
-      openSidebar();
-    });
   }
 
   // ─── Sidebar open / collapse ──────────────────────────────────────────────
   function openSidebar() {
     const sidebar = document.getElementById("__dr-sidebar__");
-    const collapseBtn = document.getElementById("__dr-collapse__");
     if (!sidebar) return;
     sidebar.classList.remove("collapsed");
-    if (collapseBtn) collapseBtn.textContent = "✕";
     sessionStorage.setItem("__dr_sidebar_open__", "true");
   }
 
   function toggleSidebar() {
     const sidebar = document.getElementById("__dr-sidebar__");
-    const collapseBtn = document.getElementById("__dr-collapse__");
     if (!sidebar) return;
     const isCollapsed = sidebar.classList.toggle("collapsed");
-    if (collapseBtn) collapseBtn.textContent = isCollapsed ? "▶" : "✕";
     sessionStorage.setItem("__dr_sidebar_open__", String(!isCollapsed));
   }
 
