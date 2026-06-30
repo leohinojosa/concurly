@@ -43,16 +43,32 @@
         position: fixed; top: 85px; right: 0; width: 320px; height: calc(100vh - 85px);
         background: #fff; z-index: 999995; display: flex; flex-direction: column;
         box-shadow: -4px 0 24px rgba(0,0,0,0.12); font-family: system-ui, sans-serif;
-        font-size: 13px; transition: transform 0.2s ease;
+        font-size: 13px; transition: width 0.2s ease;
       }
-      #__dr-sidebar__.collapsed { transform: translateX(288px); cursor: pointer; }
+      #__dr-sidebar__.collapsed { width: 48px; overflow: hidden; }
       #__dr-sidebar-header__ {
         display: flex; justify-content: space-between; align-items: center;
         padding: 12px 16px; border-bottom: 1px solid #e5e7eb;
-        font-weight: 600; color: #111;
+        font-weight: 600; color: #111; min-height: 48px;
       }
-      #__dr-collapse__ {
-        background: none; border: none; cursor: pointer; font-size: 16px; color: #6b7280;
+      #__dr-sidebar__.collapsed #__dr-sidebar-header__ {
+        padding: 0; justify-content: center; border-bottom: none;
+      }
+      #__dr-sidebar__.collapsed #__dr-sidebar-header__ > span:first-child {
+        display: none;
+      }
+      #__dr-collapse-icon__ {
+        display: flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; cursor: pointer; flex-shrink: 0;
+        border-radius: 4px;
+      }
+      #__dr-collapse-icon__:hover { background: #f3f4f6; }
+      #__dr-collapse-icon__ svg {
+        width: 20px; height: 20px; color: #6b7280;
+        transition: transform 0.2s ease;
+      }
+      #__dr-sidebar__.collapsed #__dr-collapse-icon__ svg {
+        transform: scaleX(-1);
       }
       #__dr-toggle-bar__ {
         padding: 6px 16px; border-bottom: 1px solid #e5e7eb;
@@ -67,6 +83,8 @@
         flex: 1; overflow-y: auto; padding: 12px;
         display: flex; flex-direction: column; gap: 10px;
       }
+      #__dr-sidebar__.collapsed #__dr-sidebar-body__ { display: none; }
+      #__dr-sidebar__.collapsed #__dr-toggle-bar__ { display: none; }
       .__dr-thread__ {
         border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px;
         background: #fafafa;
