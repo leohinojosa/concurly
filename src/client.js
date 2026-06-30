@@ -54,7 +54,7 @@
         font-weight: 600; color: #111; min-height: 48px;
       }
       #__dr-sidebar__.collapsed #__dr-sidebar-header__ {
-        padding: 0; justify-content: center; border-bottom: none;
+        padding: 0; justify-content: center; border-bottom: none; height: 48px;
       }
       #__dr-sidebar__.collapsed #__dr-sidebar-header__ > span:first-child {
         display: none;
