@@ -33,7 +33,7 @@ Opens an HTML design file in the browser with the comment layer active. Each fil
 Usage: `/concurly open <path-to-file.html>`
 
 Steps:
-1. Run `concurly open <path>` in the shell
+1. Run `concurly open <path>` in the shell **as a background process** (`run_in_background: true` on the Bash tool) so the server starts without blocking the agent
 2. Tell the user the browser has opened with a dark header bar at the top showing the app
    name ("concurly"), the filename, and the full file path. They can also:
    - Click any element to leave a comment
@@ -45,7 +45,7 @@ Steps:
      - **✓ Resolve** — marks the comment resolved and removes it from the sidebar
      - **✕ Delete** — permanently removes the comment (only available while open/unresolved)
    - Click a commented element to open the sidebar focused on that thread
-   - Collapse/expand the sidebar with the ✕/▶ button; state is remembered per browser tab
+   - Collapse/expand the sidebar with the ← / → icon button on the right edge; state is remembered per browser tab
 3. Remind them to say "review ready" or run `/concurly review` when ready for you to address the comments
 
 ## /concurly list
