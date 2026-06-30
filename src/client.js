@@ -51,10 +51,10 @@
       #__dr-sidebar-header__ {
         display: flex; justify-content: space-between; align-items: center;
         padding: 12px 16px; border-bottom: 1px solid #e5e7eb;
-        font-weight: 600; color: #111; min-height: 48px;
+        font-weight: 600; color: #111; height: 48px; box-sizing: border-box;
       }
       #__dr-sidebar__.collapsed #__dr-sidebar-header__ {
-        padding: 0; justify-content: center; border-bottom: none; height: 48px;
+        padding: 0; justify-content: center; border-bottom: none;
       }
       #__dr-sidebar__.collapsed #__dr-sidebar-header__ > span:first-child {
         display: none;
