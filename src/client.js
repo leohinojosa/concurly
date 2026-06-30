@@ -11,6 +11,9 @@
   // Source: src/icons/window-collapse-left.svg
   const COLLAPSE_ICON_SVG = `<svg viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m.5 12.5v-10c0-1.1045695.8954305-2 2-2h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2z"/><path d="m2.5 12.5v-10c0-1.1045695.8954305-2 2-2h-2c-1 0-2 .8954305-2 2v10c0 1.1045695 1 2 2 2h2c-1.1045695 0-2-.8954305-2-2z" fill="currentColor"/><path d="m7.5 10.5-3-3 3-3"/><path d="m12.5 7.5h-8"/></g></svg>`;
 
+  // Magnifying glass icon for annotation badge
+  const MAGNIFYING_GLASS_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="white"><path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg>`;
+
   const HEADER_H = 45;
   const TABS_H = 40;
   const CHROME_H = HEADER_H + TABS_H; // 85px
@@ -262,6 +265,16 @@
       .__dr-stat-value--implemented__ { color: #15803d; }
       .__dr-stat-divider__ {
         height: 1px; background: #f3f4f6; margin: 4px 0;
+      }
+
+      /* ── Thread card pulse animation ──────────────────────────────────── */
+      @keyframes threadPulse {
+        0% { background: #fafafa; border-color: #e5e7eb; }
+        50% { background: #fef3c7; border-color: #fcd34d; box-shadow: 0 0 12px rgba(252, 211, 77, 0.5); }
+        100% { background: #fafafa; border-color: #e5e7eb; }
+      }
+      .__dr-thread--pulse__ {
+        animation: threadPulse 0.8s ease-in-out 2;
       }
     `;
     document.head.appendChild(style);
@@ -593,6 +606,20 @@
     }
   }
 
+  function pulseThreadCard(selector) {
+    const body = document.getElementById("__dr-sidebar-body__");
+    if (!body) return;
+    for (const card of body.querySelectorAll(".__dr-thread__")) {
+      if (card.dataset.selector === selector) {
+        card.classList.remove("__dr-thread--pulse__");
+        void card.offsetWidth; // Trigger reflow to restart animation
+        card.classList.add("__dr-thread--pulse__");
+        setTimeout(() => card.classList.remove("__dr-thread--pulse__"), 1700);
+        break;
+      }
+    }
+  }
+
   // ─── Comment box ─────────────────────────────────────────────────────────
   function showCommentBox(x, y, selector, excerpt) {
     const existing = document.getElementById("__docreview__");
@@ -678,25 +705,38 @@
     const badge = document.createElement("div");
     badge.className = "__dr-badge__";
     badge.dataset.selector = selector;
-    badge.textContent = count;
+    badge.innerHTML = MAGNIFYING_GLASS_SVG;
     badge.style.cssText = `
       position: fixed;
       top: ${rect.top}px;
       left: ${rect.right - 20}px;
-      width: 18px;
-      height: 18px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       background: #6366f1;
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 999990;
-      pointer-events: none;
-      font-family: system-ui, sans-serif;
+      pointer-events: auto;
+      cursor: pointer;
+      padding: 3px;
+      transition: transform 0.15s ease, background 0.15s ease;
     `;
+    badge.addEventListener("mouseenter", () => {
+      badge.style.transform = "scale(1.15)";
+      badge.style.background = "#4f46e5";
+    });
+    badge.addEventListener("mouseleave", () => {
+      badge.style.transform = "scale(1)";
+      badge.style.background = "#6366f1";
+    });
+    badge.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openSidebar();
+      scrollSidebarToSelector(selector);
+      pulseThreadCard(selector);
+    });
     document.body.appendChild(badge);
   }
 
@@ -977,6 +1017,7 @@
     if (hasComments) {
       openSidebar();
       scrollSidebarToSelector(selector);
+      pulseThreadCard(selector);
     } else {
       const excerpt = (e.target.innerText || e.target.textContent || "")
         .trim()
