@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collapsed Sidebar Design — Concurly</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: #1f2937;
+      background: #f9fafb;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 24px;
+      background: #fff;
+    }
+    h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+      color: #111;
+    }
+    .meta {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 32px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 16px;
+    }
+    h2 {
+      font-size: 24px;
+      margin-top: 40px;
+      margin-bottom: 16px;
+      color: #111;
+      border-left: 4px solid #6366f1;
+      padding-left: 12px;
+    }
+    h3 {
+      font-size: 18px;
+      margin-top: 28px;
+      margin-bottom: 12px;
+      color: #374151;
+    }
+    p {
+      margin-bottom: 12px;
+      color: #4b5563;
+    }
+    ul, ol {
+      margin-left: 24px;
+      margin-bottom: 12px;
+    }
+    li {
+      margin-bottom: 8px;
+      color: #4b5563;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background: #f3f4f6;
+      font-weight: 600;
+      color: #111;
+    }
+    tr:nth-child(even) { background: #fafafa; }
+    code {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 13px;
+      color: #d97706;
+    }
+    .note {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 16px;
+      margin: 24px 0;
+      border-radius: 4px;
+    }
+    .note p { margin: 0; }
+    strong { font-weight: 600; color: #111; }
+    a {
+      color: #6366f1;
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Collapsed Sidebar Design — Concurly</h1>
+    <div class="meta">
+      <p><strong>Date:</strong> 2026-06-29</p>
+      <p><strong>Status:</strong> Approved</p>
+      <p><strong>Author:</strong> Leo Hinojosa</p>
+    </div>
+
+    <h2>Overview</h2>
+    <p>Enhance the concurly comment sidebar with a collapsible vertical icon bar. When collapsed, the sidebar reduces to a 48px icon bar containing only the collapse/expand toggle. When expanded, the full comment sidebar displays as normal. The icon flips direction to indicate the next action.</p>
+
+    <h2>Visual Design</h2>
+
+    <h3>Collapsed State (48px)</h3>
+    <ul>
+      <li><strong>Width:</strong> 48px fixed vertical bar anchored to the right viewport edge</li>
+      <li><strong>Position:</strong> Fixed, <code>top: 85px</code> (below header + tabs chrome), <code>right: 0</code></li>
+      <li><strong>Content:</strong> Single SVG icon, centered both horizontally and vertically</li>
+      <li><strong>Icon:</strong> window-collapse-left SVG (from svgrepo), <strong>flipped right</strong> (→ direction) to indicate "expand" action</li>
+      <li><strong>Icon Size:</strong> 20–24px</li>
+      <li><strong>Background:</strong> Match expanded sidebar (white, <code>#fff</code>)</li>
+      <li><strong>Clickable Area:</strong> Full 48px bar is clickable to expand</li>
+      <li><strong>No Text:</strong> "Comments" label and all comments are hidden</li>
+    </ul>
+
+    <h3>Expanded State (320px)</h3>
+    <ul>
+      <li><strong>Width:</strong> 320px (unchanged from current)</li>
+      <li><strong>Position:</strong> Fixed, <code>top: 85px</code>, <code>right: 0</code></li>
+      <li><strong>Header:</strong> "Comments" text on left, collapse icon on right</li>
+      <li><strong>Icon:</strong> window-collapse-left SVG <strong>flipped left</strong> (← direction) to indicate "collapse" action</li>
+      <li><strong>Icon Size:</strong> 20–24px</li>
+      <li><strong>Icon Clickable Area:</strong> The icon button in the header (same as current <code>#__dr-collapse__</code>)</li>
+      <li><strong>Content:</strong> Full comment list displays as normal</li>
+    </ul>
+
+    <h2>Behavior & Interactions</h2>
+
+    <h3>State Toggle</h3>
+    <ul>
+      <li><strong>Trigger:</strong> Click the icon in either collapsed or expanded state</li>
+      <li><strong>Result:</strong> Sidebar toggles between 48px and 320px width</li>
+      <li><strong>Animation:</strong> Smooth 0.2s transition (reuse existing CSS <code>transition</code>)</li>
+      <li><strong>Persistence:</strong> State stored in <code>sessionStorage</code> under key <code>__dr_sidebar_open__</code> (already implemented)</li>
+    </ul>
+
+    <h3>Icon Direction Flipping</h3>
+    <ul>
+      <li><strong>Logic:</strong> Use CSS <code>transform: scaleX(-1)</code> to flip the SVG left ↔ right</li>
+      <li><strong>When collapsed:</strong> Icon flips right (→), indicating click will expand</li>
+      <li><strong>When expanded:</strong> Icon flips left (←), indicating click will collapse</li>
+    </ul>
+
+    <h3>No Intermediate States</h3>
+    <ul>
+      <li>Bar is either 48px (collapsed) or 320px (expanded)</li>
+      <li>No partial width states</li>
+      <li>Transition is smooth via CSS <code>transform</code></li>
+    </ul>
+
+    <h2>Technical Implementation</h2>
+
+    <h3>Icon Asset</h3>
+    <ul>
+      <li><strong>Source:</strong> <a href="https://www.svgrepo.com/show/342936/window-collapse-left.svg" target="_blank">https://www.svgrepo.com/show/342936/window-collapse-left.svg</a></li>
+      <li><strong>Format:</strong> Inline SVG embedded in <code>src/client.js</code> (downloaded locally, not fetched from URL)</li>
+      <li><strong>Local Copy:</strong> Store the SVG in <code>src/icons/window-collapse-left.svg</code> (or similar) and inline it into the client script at build time</li>
+      <li><strong>Size in DOM:</strong> 20–24px (adjustable)</li>
+      <li><strong>Flip Method:</strong> CSS <code>transform: scaleX(-1)</code> applied conditionally via class</li>
+    </ul>
+
+    <h3>DOM Changes</h3>
+    <ol>
+      <li><strong>New element:</strong> <code>#__dr-collapse-icon__</code> — contains the SVG
+        <ul>
+          <li>Positioned in the center of the 48px bar when collapsed</li>
+          <li>Positioned in the header top-right when expanded</li>
+        </ul>
+      </li>
+      <li><strong>Class state:</strong> Add class <code>collapsed</code> to <code>#__dr-sidebar__</code> when narrow
+        <ul>
+          <li>Existing CSS already uses this class</li>
+          <li>Icon visibility and flip logic driven by this class</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>CSS Changes</h3>
+    <ol>
+      <li><strong>Collapsed bar styling:</strong>
+        <ul>
+          <li><code>#__dr-sidebar__.collapsed</code> — change from <code>transform: translateX(288px)</code> to <code>width: 48px</code></li>
+          <li>Center the icon in the 48px space</li>
+          <li>Remove any content overflow visibility</li>
+        </ul>
+      </li>
+      <li><strong>Icon flip:</strong>
+        <ul>
+          <li><code>.collapsed #__dr-collapse-icon__</code> — apply <code>transform: scaleX(-1)</code></li>
+          <li>Icon naturally flips when sidebar collapses</li>
+        </ul>
+      </li>
+      <li><strong>Transitions:</strong>
+        <ul>
+          <li>Keep existing <code>transition: transform 0.2s ease</code> or update to <code>transition: width 0.2s ease</code> for smoother collapse animation</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>JavaScript Changes</h3>
+    <ol>
+      <li><strong>Icon rendering:</strong>
+        <ul>
+          <li>Embed the SVG inline as a string constant in <code>src/client.js</code></li>
+          <li>Replace current <code>collapseBtn.textContent = "✕"</code> with SVG element</li>
+        </ul>
+      </li>
+      <li><strong>Toggle logic:</strong>
+        <ul>
+          <li>No changes to <code>toggleSidebar()</code>, <code>openSidebar()</code> functions — they already manage the <code>collapsed</code> class</li>
+          <li>CSS handles the visual flip automatically</li>
+        </ul>
+      </li>
+      <li><strong>State persistence:</strong>
+        <ul>
+          <li>No changes — existing <code>sessionStorage</code> logic already works</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h2>Acceptance Criteria</h2>
+    <ul>
+      <li>☐ Collapsed bar is exactly 48px wide</li>
+      <li>☐ Icon is centered both H and V in the 48px space</li>
+      <li>☐ Icon flips direction on toggle (right when collapsed, left when expanded)</li>
+      <li>☐ Smooth 0.2s transition on collapse/expand</li>
+      <li>☐ Clicking the icon toggles the sidebar</li>
+      <li>☐ State persists across page reload (sessionStorage)</li>
+      <li>☐ All comment content is hidden when collapsed (no text overflow)</li>
+      <li>☐ Icon is clickable in both states</li>
+      <li>☐ No console errors</li>
+    </ul>
+
+    <h2>Future Enhancements (Out of Scope)</h2>
+    <ul>
+      <li>Add search icon/feature in the expanded header (placeholder for future)</li>
+      <li>Add additional action icons in the collapsed bar (e.g., add comment, settings)</li>
+      <li>Customize icon styling (color, hover effects)</li>
+    </ul>
+
+    <div class="note">
+      <p><strong>Note:</strong> The current implementation uses <code>transform: translateX(288px)</code> to slide the sidebar off-screen. This design switches to a true collapse that keeps the 48px bar visible. SVG flipping via <code>scaleX(-1)</code> is more maintainable than storing two separate icon assets. Existing sessionStorage and event handling require no changes.</p>
+    </div>
+  </div>
+</body>
+</html>

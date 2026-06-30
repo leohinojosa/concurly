@@ -65,7 +65,8 @@ Enhance the concurly comment sidebar with a collapsible vertical icon bar. When 
 ### Icon Asset
 
 - **Source:** https://www.svgrepo.com/show/342936/window-collapse-left.svg
-- **Format:** Inline SVG embedded in `src/client.js`
+- **Format:** Inline SVG embedded in `src/client.js` (downloaded locally, not fetched from URL)
+- **Local Copy:** Store the SVG in `src/icons/window-collapse-left.svg` (or similar) and inline it into the client script at build time
 - **Size in DOM:** 20–24px (adjustable)
 - **Flip Method:** CSS `transform: scaleX(-1)` applied conditionally via class
 
