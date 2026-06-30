@@ -68,9 +68,10 @@
       #__dr-collapse-icon__ svg {
         width: 20px; height: 20px; color: #6b7280;
         transition: transform 0.2s ease;
+        transform: scaleX(-1);
       }
       #__dr-sidebar__.collapsed #__dr-collapse-icon__ svg {
-        transform: scaleX(-1);
+        transform: scaleX(1);
       }
       #__dr-toggle-bar__ {
         padding: 6px 16px; border-bottom: 1px solid #e5e7eb;
