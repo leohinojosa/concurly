@@ -209,8 +209,8 @@
       #__dr-header-refresh__ {
         flex-shrink: 0; margin-left: 8px;
         background: #27272a; color: #e4e4e7; border: none;
-        border-radius: 6px; padding: 5px 10px; line-height: 1;
-        font-family: system-ui, sans-serif; font-size: 11px; font-weight: 600;
+        border-radius: 6px; padding: 4px 9px; line-height: 1;
+        font-family: system-ui, sans-serif; font-size: 14px; font-weight: 600;
         cursor: pointer; transition: background 0.15s;
       }
       #__dr-header-refresh__:hover:not(:disabled) { background: #3f3f46; }
@@ -376,8 +376,9 @@
     // file from disk); remote sessions swap this for a refetch in initRemoteControls().
     const refreshBtn = document.createElement("button");
     refreshBtn.id = "__dr-header-refresh__";
-    refreshBtn.textContent = "↻ Refresh";
-    refreshBtn.title = "Reload page";
+    refreshBtn.textContent = "↻";
+    refreshBtn.title = "Refresh";
+    refreshBtn.setAttribute("aria-label", "Refresh");
     refreshBtn.onclick = () => window.location.reload();
 
     header.appendChild(toggle);
@@ -440,7 +441,6 @@
     } else {
       // Reuse the standalone button from injectHeader(): refetch instead of reload.
       const btn = document.getElementById("__dr-header-refresh__");
-      btn.title = "Refetch from source";
 
       const status = document.createElement("span");
       status.id = "__dr-header-refresh-status__";
