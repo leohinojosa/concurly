@@ -573,11 +573,8 @@
 
     document.body.appendChild(sidebar);
 
-    // Restore collapsed state from session
-    const isOpen = sessionStorage.getItem("__dr_sidebar_open__") !== "false";
-    if (!isOpen) {
-      sidebar.classList.add("collapsed");
-    }
+    // Always start collapsed; the user expands it on demand
+    sidebar.classList.add("collapsed");
   }
 
   // ─── Sidebar open / collapse ──────────────────────────────────────────────
@@ -585,14 +582,12 @@
     const sidebar = document.getElementById("__dr-sidebar__");
     if (!sidebar) return;
     sidebar.classList.remove("collapsed");
-    sessionStorage.setItem("__dr_sidebar_open__", "true");
   }
 
   function toggleSidebar() {
     const sidebar = document.getElementById("__dr-sidebar__");
     if (!sidebar) return;
-    const isCollapsed = sidebar.classList.toggle("collapsed");
-    sessionStorage.setItem("__dr_sidebar_open__", String(!isCollapsed));
+    sidebar.classList.toggle("collapsed");
   }
 
   function scrollSidebarToSelector(selector) {
