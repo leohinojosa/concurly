@@ -1,6 +1,7 @@
 (function () {
   const PORT = "__PORT__"; // Replaced at inject time by cli.ts
   const FILE_PATH = "__FILE_PATH__"; // Replaced at inject time by cli.ts
+  const THEME_DATA = "__THEMES__"; // Replaced at inject time by cli.ts with src/themes.json
 
   // Module-level state
   let openCommentsBySelector = {};

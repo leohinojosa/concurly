@@ -51,6 +51,11 @@ test("cli: open remote URL, list, review, refresh, expired link, complete", asyn
     assert.ok(!out.includes("SECRET1"), "token must not be printed");
     assert.match(out, /Source:\s+http:\/\/127\.0\.0\.1:\d+\/docs\/design\.html\r?\n/);
 
+    // The served page carries the injected theme registry (no leftover placeholder).
+    const served = await (await fetch(`http://localhost:${port}/`)).text();
+    assert.ok(served.includes('"id":"nord"'), "theme registry injected");
+    assert.ok(!served.includes('"__THEMES__"'), "placeholder replaced");
+
     const stateFile = path.join(os.tmpdir(), "concurly-instances", `${port}.json`);
     assert.ok(!fs.readFileSync(stateFile, "utf-8").includes("SECRET1"), "token must not hit disk");
 
