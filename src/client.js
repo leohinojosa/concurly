@@ -163,7 +163,10 @@
         font-size: 13px; letter-spacing: 0.05em; flex-shrink: 0;
       }
       #__dr-header-sep__ { color: #52525b; flex-shrink: 0; }
-      #__dr-header-filename__ { color: #f4f4f5; font-weight: 600; flex-shrink: 0; }
+      #__dr-header-filename__ {
+        color: #f4f4f5; font-weight: 600;
+        flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+      }
       #__dr-header-path__ {
         color: #71717a; font-size: 11px;
         overflow: hidden; text-overflow: ellipsis; min-width: 0;
@@ -564,6 +567,8 @@
     if (mode === "read") {
       const box = document.getElementById("__docreview__");
       if (box) box.remove();
+      // Cancel any in-progress inline edit so it can't be saved in read mode
+      document.querySelectorAll(".__dr-cancel-btn__").forEach((b) => b.click());
       if (hoveredEl) {
         hoveredEl.classList.remove("__dr-highlight__", "__dr-highlight--annotated__");
         hoveredEl = null;
