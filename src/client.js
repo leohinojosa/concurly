@@ -275,7 +275,7 @@
     .__dr-delete-btn__ { color: var(--dr-danger); }
     .__dr-resolve-btn__, .__dr-save-btn__ { background: var(--dr-accent); border-color: var(--dr-accent); color: var(--dr-accent-fg); }
     .__dr-resolve-btn__:hover, .__dr-save-btn__:hover { filter: brightness(1.1); }
-    html[data-dr-cards="ruled"] .__dr-thread-actions__ { gap: 14px; }
+    html[data-dr-cards="ruled"] .__dr-thread-actions__ { gap: 6px 14px; }
     html[data-dr-cards="ruled"] .__dr-scroll-btn__, html[data-dr-cards="ruled"] .__dr-edit-btn__,
     html[data-dr-cards="ruled"] .__dr-resolve-btn__, html[data-dr-cards="ruled"] .__dr-delete-btn__ {
       padding: 2px 0; border-radius: 0; border-color: transparent; background: transparent;
@@ -468,11 +468,136 @@
 
     header.appendChild(toggle);
     header.appendChild(refreshBtn);
+    header.appendChild(buildThemeButton()); // right of refresh
     header.appendChild(version);
     header.appendChild(ghLink);
 
     document.body.prepend(header);
   }
+
+  // ─── Theme picker ─────────────────────────────────────────────────────────
+  const PALETTE_SVG = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2a6 6 0 1 0 0 12c.9 0 1.3-.6 1.3-1.2 0-.9-.8-1.1-.8-1.9 0-.7.6-1.2 1.3-1.2H12a2 2 0 0 0 2-2C14 4.4 11.3 2 8 2z"/><circle cx="5" cy="7.2" r=".7" fill="currentColor"/><circle cx="8" cy="5" r=".7" fill="currentColor"/><circle cx="11" cy="7.2" r=".7" fill="currentColor"/></svg>`;
+
+  let themeMenu = null;
+
+  function themeItems() {
+    return themeMenu ? Array.from(themeMenu.querySelectorAll(".__dr-theme-item__")) : [];
+  }
+
+  function closeThemeMenu(returnFocus) {
+    if (!themeMenu) return;
+    themeMenu.remove();
+    themeMenu = null;
+    const btn = document.getElementById("__dr-theme-btn__");
+    if (btn) {
+      btn.setAttribute("aria-expanded", "false");
+      if (returnFocus) btn.focus({ preventScroll: true });
+    }
+    showTheme(effectiveTheme()); // drop any hover preview
+  }
+
+  function openThemeMenu() {
+    if (themeMenu) return;
+    const btn = document.getElementById("__dr-theme-btn__");
+    if (!btn) return;
+    const current = effectiveTheme();
+
+    const menu = document.createElement("div");
+    menu.id = "__dr-theme-menu__";
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("aria-label", "Theme");
+
+    [["light", "Light"], ["dark", "Dark"]].forEach(([mode, title]) => {
+      const group = document.createElement("div");
+      group.className = "__dr-theme-group__";
+      group.textContent = title;
+      menu.appendChild(group);
+
+      THEME_DATA.themes.filter((t) => t.mode === mode).forEach((t) => {
+        const item = document.createElement("button");
+        item.className = "__dr-theme-item__";
+        item.dataset.theme = t.id;
+        item.setAttribute("role", "menuitemradio");
+        item.setAttribute("aria-checked", String(t.id === current));
+
+        const swatch = document.createElement("span");
+        swatch.className = "__dr-swatch__";
+        [t.vars.bg, t.vars.accent, t.vars.fg].forEach((color) => {
+          const chip = document.createElement("i");
+          chip.style.background = color;
+          swatch.appendChild(chip);
+        });
+
+        const name = document.createElement("span");
+        name.textContent = t.label;
+
+        const check = document.createElement("span");
+        check.className = "__dr-theme-check__";
+        check.textContent = "✓";
+
+        item.appendChild(swatch);
+        item.appendChild(name);
+        item.appendChild(check);
+
+        item.addEventListener("mouseenter", () => showTheme(t.id)); // live preview
+        item.addEventListener("focus", () => showTheme(t.id));
+        item.addEventListener("click", () => {
+          chooseTheme(t.id);
+          closeThemeMenu(true);
+        });
+        menu.appendChild(item);
+      });
+    });
+
+    const r = btn.getBoundingClientRect();
+    menu.style.right = `${Math.max(8, window.innerWidth - r.right)}px`;
+    document.body.appendChild(menu);
+    themeMenu = menu;
+    btn.setAttribute("aria-expanded", "true");
+
+    const items = themeItems();
+    (items.find((i) => i.dataset.theme === current) || items[0]).focus({ preventScroll: true });
+  }
+
+  function buildThemeButton() {
+    const btn = document.createElement("button");
+    btn.id = "__dr-theme-btn__";
+    btn.title = "Theme";
+    btn.setAttribute("aria-label", "Theme");
+    btn.setAttribute("aria-haspopup", "menu");
+    btn.setAttribute("aria-expanded", "false");
+    btn.innerHTML = PALETTE_SVG;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (themeMenu) closeThemeMenu(false);
+      else openThemeMenu();
+    });
+    return btn;
+  }
+
+  // Keyboard inside the open menu.
+  document.addEventListener("keydown", (e) => {
+    if (!themeMenu) return;
+    const items = themeItems();
+    const i = items.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    else if (e.key === "Home") { e.preventDefault(); items[0].focus(); }
+    else if (e.key === "End") { e.preventDefault(); items[items.length - 1].focus(); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeThemeMenu(true); }
+    else if (e.key === "Tab") { closeThemeMenu(false); }
+  }, true);
+
+  // A click outside only closes the menu; swallow it so it can't also place a comment box.
+  document.addEventListener("click", (e) => {
+    if (!themeMenu) return;
+    if (e.target.closest("#__dr-theme-menu__") || e.target.closest("#__dr-theme-btn__")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    closeThemeMenu(false);
+  }, true);
+
+  window.addEventListener("resize", () => closeThemeMenu(false));
 
   // ─── Remote source controls (remote sessions only) ────────────────────────
   function timeAgo(iso) {
