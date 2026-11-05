@@ -1,6 +1,6 @@
 {
   "name": "concurly",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Review software architecture concurrently with an expert AI peer.",
   "main": "dist/cli.js",
   "bin": {
@@ -10,7 +10,8 @@
     "build": "tsc",
     "postbuild": "copy src\\client.js dist\\client.js",
     "dev": "tsc --watch",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "test": "npm run build && node --test test/"
   },
   "dependencies": {
     "chokidar": "^5.0.0",

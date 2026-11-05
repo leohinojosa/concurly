@@ -201,6 +201,25 @@
       }
       #__dr-header-github__:hover { opacity: 1; color: #a1a1aa; }
       #__dr-header-github__ svg { width: 14px; height: 14px; }
+      #__dr-header-remote__ {
+        display: flex; align-items: center; gap: 8px;
+        flex-shrink: 0; margin-left: 8px;
+      }
+      #__dr-header-fetched__, #__dr-header-pinned__ { color: #71717a; font-size: 11px; }
+      #__dr-header-refresh__ {
+        flex-shrink: 0; margin-left: 8px;
+        background: #27272a; color: #e4e4e7; border: none;
+        border-radius: 6px; padding: 4px 9px; line-height: 1;
+        font-family: system-ui, sans-serif; font-size: 14px; font-weight: 600;
+        cursor: pointer; transition: background 0.15s;
+      }
+      #__dr-header-refresh__:hover:not(:disabled) { background: #3f3f46; }
+      #__dr-header-refresh__:disabled { opacity: 0.6; cursor: default; }
+      #__dr-header-refresh-status__ {
+        color: #a1a1aa; font-size: 11px; max-width: 360px;
+        overflow: hidden; text-overflow: ellipsis;
+      }
+      #__dr-header-refresh-status__.__dr-error__ { color: #f87171; }
 
       /* ── Tab bar ─────────────────────────────────────────────────────────── */
       #__dr-tabs__ {
@@ -353,11 +372,105 @@
     header.appendChild(sep);
     header.appendChild(filename);
     header.appendChild(filepath);
+    // Standalone refresh, next to the other tools. Reloads the page (re-reads the
+    // file from disk); remote sessions swap this for a refetch in initRemoteControls().
+    const refreshBtn = document.createElement("button");
+    refreshBtn.id = "__dr-header-refresh__";
+    refreshBtn.textContent = "↻";
+    refreshBtn.title = "Refresh";
+    refreshBtn.setAttribute("aria-label", "Refresh");
+    refreshBtn.onclick = () => window.location.reload();
+
     header.appendChild(toggle);
+    header.appendChild(refreshBtn);
     header.appendChild(version);
     header.appendChild(ghLink);
 
     document.body.prepend(header);
+  }
+
+  // ─── Remote source controls (remote sessions only) ────────────────────────
+  function timeAgo(iso) {
+    const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+    if (s < 60) return "just now";
+    const m = Math.round(s / 60);
+    if (m < 60) return m + "m ago";
+    const h = Math.round(m / 60);
+    if (h < 48) return h + "h ago";
+    return Math.round(h / 24) + "d ago";
+  }
+
+  async function initRemoteControls() {
+    let info;
+    try {
+      const res = await fetch(`http://localhost:${PORT}/source`, { cache: "no-store" });
+      if (!res.ok) return; // local-file session: no remote controls
+      info = await res.json();
+    } catch {
+      return;
+    }
+
+    const header = document.getElementById("__dr-header__");
+    const versionEl = document.getElementById("__dr-header-version__");
+    if (!header || !versionEl) return;
+
+    // Show the source URL instead of the cache path.
+    const pathEl = document.getElementById("__dr-header-path__");
+    if (pathEl) {
+      pathEl.textContent = info.sourceUrl;
+      pathEl.title = info.sourceUrl;
+    }
+
+    const wrap = document.createElement("span");
+    wrap.id = "__dr-header-remote__";
+
+    const fetched = document.createElement("span");
+    fetched.id = "__dr-header-fetched__";
+    const renderFetched = () => {
+      fetched.textContent = info.fetchedAt ? "fetched " + timeAgo(info.fetchedAt) : "";
+    };
+    renderFetched();
+    setInterval(renderFetched, 30000);
+    wrap.appendChild(fetched);
+
+    if (info.isPinned) {
+      const pinned = document.createElement("span");
+      pinned.id = "__dr-header-pinned__";
+      pinned.textContent = "pinned to commit";
+      wrap.appendChild(pinned);
+    } else {
+      // Reuse the standalone button from injectHeader(): refetch instead of reload.
+      const btn = document.getElementById("__dr-header-refresh__");
+
+      const status = document.createElement("span");
+      status.id = "__dr-header-refresh-status__";
+
+      btn.onclick = async () => {
+        btn.disabled = true;
+        status.className = "";
+        status.textContent = "Refetching…";
+        status.title = "";
+        try {
+          const res = await fetch(`http://localhost:${PORT}/refresh`, { method: "POST" });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+          info.fetchedAt = data.fetchedAt;
+          renderFetched();
+          status.textContent = data.status === "unchanged" ? "No changes" : "Updated";
+          setTimeout(() => { status.textContent = ""; }, 3000);
+        } catch (err) {
+          status.className = "__dr-error__";
+          status.textContent = "Couldn't refetch: " + err.message;
+          status.title = err.message;
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      wrap.appendChild(status);
+    }
+
+    header.insertBefore(wrap, versionEl);
   }
 
   // ─── Tab bar ──────────────────────────────────────────────────────────────
@@ -1121,6 +1234,7 @@
   // ─── Init ─────────────────────────────────────────────────────────────────
   injectStyles();
   injectHeader();
+  initRemoteControls();
   injectTabBar();
   injectHistoryPanel();
   injectSidebar();

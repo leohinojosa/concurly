@@ -7,6 +7,14 @@ import { WebSocketServer } from "ws";
 import { createServer, findFreePort } from "./server";
 import { getStorePath, readComments, resolveComment } from "./store";
 import { createWatcher } from "./watcher";
+import {
+  cachedHtmlPath,
+  fetchRemote,
+  isUrl,
+  normalizeUrl,
+  stripSecrets,
+} from "./remote";
+import type { RemoteSource } from "./server";
 
 // One JSON file per running instance, keyed by port number.
 const STATE_DIR = path.join(os.tmpdir(), "concurly-instances");
@@ -14,6 +22,7 @@ const STATE_DIR = path.join(os.tmpdir(), "concurly-instances");
 interface State {
   htmlPath: string;
   storePath: string;
+  sourceUrl?: string; // token-stripped; present for remote sessions only
   port: number;
   pid: number;
   startedAt: string;
@@ -59,40 +68,102 @@ function isAlive(pid: number): boolean {
 function resolveInstance(target: string, instances: State[]): State | null {
   const byPort = instances.find((i) => String(i.port) === target);
   if (byPort) return byPort;
+  if (isUrl(target)) {
+    try {
+      const identity = stripSecrets(normalizeUrl(target));
+      return instances.find((i) => i.sourceUrl === identity) ?? null;
+    } catch {
+      return null;
+    }
+  }
   const abs = path.resolve(target);
   return instances.find((i) => i.htmlPath === abs) ?? null;
 }
 
 async function openBrowser(url: string): Promise<void> {
+  if (process.env.CONCURLY_NO_BROWSER) return; // used by tests
   const { default: open } = await import("open");
   await open(url);
+}
+
+async function requestRefresh(
+  port: number,
+  fullUrl?: string
+): Promise<{ status: string; fetchedAt: string }> {
+  const res = await fetch(`http://127.0.0.1:${port}/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fullUrl ? { url: fullUrl } : {}),
+    signal: AbortSignal.timeout(20000),
+  });
+  const data = (await res.json()) as { status?: string; fetchedAt?: string; error?: string };
+  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+  return data as { status: string; fetchedAt: string };
 }
 
 // ─── open ────────────────────────────────────────────────────────────────────
 
 async function cmdOpen(args: string[]): Promise<void> {
-  const htmlArg = args[0];
-  if (!htmlArg) {
-    console.error("Usage: concurly open <file.html>");
+  const target = args[0];
+  if (!target) {
+    console.error("Usage: concurly open <file.html | url>");
     process.exit(1);
   }
 
-  const htmlPath = path.resolve(htmlArg);
-  if (!fs.existsSync(htmlPath)) {
-    console.error(`File not found: ${htmlPath}`);
-    process.exit(1);
+  let htmlPath: string;
+  let remote: RemoteSource | undefined;
+  let sourceUrl: string | undefined;
+
+  if (isUrl(target)) {
+    let fullUrl: string;
+    try {
+      fullUrl = normalizeUrl(target);
+    } catch {
+      console.error(`Invalid URL: ${target}`);
+      process.exit(1);
+    }
+    sourceUrl = stripSecrets(fullUrl);
+    htmlPath = cachedHtmlPath(sourceUrl);
+    remote = { fullUrl }; // full URL (with any ?token=) stays in memory only
+  } else {
+    htmlPath = path.resolve(target);
+    if (!fs.existsSync(htmlPath)) {
+      console.error(`File not found: ${htmlPath}`);
+      process.exit(1);
+    }
   }
 
-  // Re-use an existing live instance for the same file.
+  // Re-use an existing live instance for the same file / source.
   const existing = readAllInstances().find(
     (i) => i.htmlPath === htmlPath && isAlive(i.pid)
   );
   if (existing) {
     const url = `http://localhost:${existing.port}`;
     console.log(`Instance already running for this file on port ${existing.port}`);
+    if (remote) {
+      // Hand the (possibly fresher) URL to the live session and refetch.
+      try {
+        const r = await requestRefresh(existing.port, remote.fullUrl);
+        console.log(r.status === "updated" ? "Refetched: page updated" : "Refetched: no changes");
+      } catch (err) {
+        console.warn(`Warning: couldn't refetch (${(err as Error).message})`);
+      }
+    }
     console.log(`Opening: ${url}`);
     await openBrowser(url);
     return;
+  }
+
+  if (remote) {
+    try {
+      await fetchRemote(remote.fullUrl);
+    } catch (err) {
+      if (!fs.existsSync(htmlPath)) {
+        console.error((err as Error).message);
+        process.exit(1);
+      }
+      console.warn(`Warning: couldn't refetch (${(err as Error).message}). Opening stale cached copy.`);
+    }
   }
 
   let port: number;
@@ -124,7 +195,7 @@ async function cmdOpen(args: string[]): Promise<void> {
   const tmpClientPath = path.join(os.tmpdir(), `concurly-client-${port}.js`);
   fs.writeFileSync(tmpClientPath, portedScript, "utf-8");
 
-  const app = createServer(htmlPath, tmpClientPath);
+  const app = createServer(htmlPath, tmpClientPath, remote);
   const storePath = getStorePath(htmlPath);
 
   const httpServer = http.createServer(app);
@@ -151,10 +222,11 @@ async function cmdOpen(args: string[]): Promise<void> {
   });
 
   httpServer.listen(port, "127.0.0.1", () => {
-    writeInstanceState({ htmlPath, storePath, port, pid: process.pid, startedAt: new Date().toISOString() });
+    writeInstanceState({ htmlPath, storePath, sourceUrl, port, pid: process.pid, startedAt: new Date().toISOString() });
     const url = `http://localhost:${port}`;
     console.log(`concurly running on ${url}`);
     console.log(`File:     ${htmlPath}`);
+    if (sourceUrl) console.log(`Source:   ${sourceUrl}`);
     console.log(`Comments: ${storePath}`);
     console.log(`PID:      ${process.pid}`);
     createWatcher([htmlPath], storePath, wss);
@@ -188,7 +260,8 @@ function cmdList(): void {
   for (const inst of alive) {
     console.log(`  Port ${inst.port}  PID ${inst.pid}  [running]`);
     console.log(`  File:     ${inst.htmlPath}`);
-    console.log(`  URL:      http://localhost:${inst.port}`);
+    if (inst.sourceUrl) console.log(`  Source:   ${inst.sourceUrl}`);
+    console.log(`  URL:     http://localhost:${inst.port}`);
     console.log(`  Started:  ${inst.startedAt}`);
     console.log();
   }
@@ -206,7 +279,7 @@ async function cmdComplete(args: string[]): Promise<void> {
     const alive = all.filter((i) => isAlive(i.pid));
     if (alive.length === 0) {
       for (const i of all) removeInstanceState(i.port); // clean up any stale files
-      console.error("No active concurly session found. Run: concurly open <file.html>");
+      console.error("No active concurly session found. Run: concurly open <file.html | url>");
       process.exit(1);
     }
     if (alive.length === 1) {
@@ -252,7 +325,7 @@ function pickInstance(target: string | undefined): State {
   const alive = readAllInstances().filter((i) => isAlive(i.pid));
 
   if (alive.length === 0) {
-    console.error("No active concurly session. Run: concurly open <file.html>");
+    console.error("No active concurly session. Run: concurly open <file.html | url>");
     process.exit(1);
   }
 
@@ -282,7 +355,16 @@ function cmdReview(args: string[]): void {
     }));
 
   process.stdout.write(
-    JSON.stringify({ htmlFile: inst.htmlPath, port: inst.port, openComments: open }, null, 2) + "\n"
+    JSON.stringify(
+      {
+        htmlFile: inst.htmlPath,
+        ...(inst.sourceUrl ? { sourceUrl: inst.sourceUrl } : {}),
+        port: inst.port,
+        openComments: open,
+      },
+      null,
+      2
+    ) + "\n"
   );
 }
 
@@ -305,16 +387,42 @@ function cmdAgentResolve(args: string[]): void {
   console.log(`Resolved comment ${id}`);
 }
 
+// ─── refresh ─────────────────────────────────────────────────────────────────
+
+async function cmdRefresh(args: string[]): Promise<void> {
+  const target = args[0];
+  const inst = pickInstance(target);
+  if (!inst.sourceUrl) {
+    console.error("This session is a local file; nothing to refresh.");
+    process.exit(1);
+  }
+
+  // A URL argument may carry a fresh ?token= to replace an expired one.
+  const freshUrl = target && isUrl(target) ? normalizeUrl(target) : undefined;
+  try {
+    const r = await requestRefresh(inst.port, freshUrl);
+    console.log(
+      r.status === "updated"
+        ? `Updated from ${inst.sourceUrl} (fetched ${r.fetchedAt})`
+        : `No changes (checked ${r.fetchedAt})`
+    );
+  } catch (err) {
+    console.error(`Couldn't refetch: ${(err as Error).message}`);
+    process.exit(1);
+  }
+}
+
 // ─── help ────────────────────────────────────────────────────────────────────
 
 function printHelp(): void {
   console.log(`concurly — Review software architecture concurrently with an expert AI peer.
 
 Commands:
-  concurly open <file.html>              Open a design file in the browser (one instance per file)
+  concurly open <file.html | url>        Open a design file or remote HTML URL (one instance per file/URL)
   concurly list                          List all running instances with port, PID, and file
   concurly review [port|path]            Print open comments as JSON (port/path required if multiple sessions)
   concurly complete [port|path]          Stop a review session; auto-selects if only one is running
+  concurly refresh [port|url]            Refetch a remote page; a URL with a fresh ?token= replaces an expired link
   concurly agent resolve <id> [port|path]  Mark a comment as resolved
 
 Options:
@@ -334,8 +442,8 @@ async function main(): Promise<void> {
 
   const [cmd, ...rest] = argv;
 
-  // `concurly <file.html>` shorthand defaults to open.
-  if (cmd.endsWith(".html") || cmd.endsWith(".htm")) {
+  // `concurly <file.html | url>` shorthand defaults to open.
+  if (isUrl(cmd) || cmd.endsWith(".html") || cmd.endsWith(".htm")) {
     await cmdOpen([cmd, ...rest]);
     return;
   }
@@ -344,6 +452,7 @@ async function main(): Promise<void> {
   if (cmd === "list") { cmdList(); return; }
   if (cmd === "review") { cmdReview(rest); return; }
   if (cmd === "complete") { await cmdComplete(rest); return; }
+  if (cmd === "refresh") { await cmdRefresh(rest); return; }
 
   if (cmd === "agent") {
     const [subCmd, ...subRest] = rest;

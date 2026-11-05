@@ -12,8 +12,22 @@ import {
   getStorePath,
 } from "./store";
 import type { Comment } from "./store";
+import {
+  fetchRemote,
+  isPinnedUrl,
+  isUrl,
+  normalizeUrl,
+  readSourceMeta,
+  RemoteError,
+  stripSecrets,
+} from "./remote";
 
-export function createServer(htmlPath: string, clientScriptPath: string) {
+/** Mutable holder so a fresh `?token=` URL can replace an expired one at runtime. */
+export interface RemoteSource {
+  fullUrl: string;
+}
+
+export function createServer(htmlPath: string, clientScriptPath: string, source?: RemoteSource) {
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -102,6 +116,39 @@ export function createServer(htmlPath: string, clientScriptPath: string) {
       return;
     }
     res.json({ success: true });
+  });
+
+  app.get("/source", (_req, res) => {
+    if (!source) {
+      res.status(404).json({ error: "not a remote session" });
+      return;
+    }
+    const sourceUrl = stripSecrets(normalizeUrl(source.fullUrl));
+    res.json({
+      sourceUrl,
+      fetchedAt: readSourceMeta(sourceUrl)?.fetchedAt ?? null,
+      isPinned: isPinnedUrl(sourceUrl),
+    });
+  });
+
+  app.post("/refresh", async (req, res) => {
+    if (!source) {
+      res.status(404).json({ error: "not a remote session" });
+      return;
+    }
+    const { url } = (req.body ?? {}) as { url?: unknown };
+    try {
+      if (url !== undefined) {
+        if (typeof url !== "string" || !isUrl(url)) throw new Error("url must be an http(s) URL");
+        const sameSource =
+          stripSecrets(normalizeUrl(url)) === stripSecrets(normalizeUrl(source.fullUrl));
+        if (!sameSource) throw new Error("url must be the same source as this session");
+        source.fullUrl = normalizeUrl(url);
+      }
+      res.json(await fetchRemote(source.fullUrl));
+    } catch (err) {
+      res.status(err instanceof RemoteError ? 502 : 400).json({ error: (err as Error).message });
+    }
   });
 
   return app;
