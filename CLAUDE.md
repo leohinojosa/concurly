@@ -17,7 +17,9 @@ concurly/
 │   ├── server.ts     ← Express HTTP server + REST API + port auto-selection
 │   ├── store.ts      ← Synchronous read/write of the comments JSON file
 │   ├── watcher.ts    ← chokidar file watcher; pushes WebSocket messages on change
+│   ├── remote.ts     ← Remote URL support: normalize, strip ?token=, review-folder cache layout, fetchRemote
 │   └── client.js     ← Vanilla JS IIFE injected into the served HTML page (NOT TypeScript)
+├── test/             ← node:test suites (run against dist/); `npm test` builds then runs them
 ├── dist/             ← Compiled output (tsc). client.js is copied here by postbuild.
 ├── skills/
 │   └── concurly/
@@ -61,12 +63,13 @@ concurly --help
 ## CLI Commands
 
 ```
-concurly open <file.html>               Open a file; starts one server instance per file
+concurly open <file.html | url>         Open a file or remote HTML URL; one server instance per file/URL
 concurly list                           List all running instances (port, PID, status, URL)
-concurly review [port|path]             Print open comments as JSON (for agent consumption)
-concurly complete <port|path>           Stop a session gracefully (comments JSON preserved)
+concurly review [port|path|url]         Print open comments as JSON (for agent consumption)
+concurly complete <port|path|url>       Stop a session gracefully (comments JSON preserved)
+concurly refresh [port|url]             Refetch a remote page; a URL with a fresh ?token= replaces an expired link
 concurly agent resolve <id> [port|path] Mark a specific comment as resolved
-concurly <file.html>                    Shorthand — defaults to "open"
+concurly <file.html | url>              Shorthand — defaults to "open"
 ```
 
 ---
@@ -80,11 +83,14 @@ Each `concurly open` call spawns an independent Node process with its own port. 
 {
   "htmlPath": "C:\\path\\to\\design.html",
   "storePath": "C:\\path\\to\\design.comments.json",
+  "sourceUrl": "https://raw.githubusercontent.com/o/r/main/design.html",
   "port": 5391,
   "pid": 12345,
   "startedAt": "2026-06-28T00:00:00.000Z"
 }
 ```
+
+`sourceUrl` is present only for remote sessions and is always token-stripped (see "Remote sources").
 
 - Liveness check: `process.kill(pid, 0)` — throws if dead, succeeds silently if alive
 - On SIGTERM/SIGINT: removes state file and per-port temp client file; **never** deletes the comments JSON
@@ -120,6 +126,29 @@ interface Comment {
 | `PATCH` | `/comments/:id` | Updates comment body (open comments only) |
 | `PATCH` | `/comments/:id/resolve` | Marks comment resolved, sets `resolvedAt` |
 | `DELETE` | `/comments/:id` | Deletes comment (open comments only) |
+| `GET` | `/source` | Remote sessions: `{ sourceUrl, fetchedAt, isPinned }`. `404` for local files |
+| `POST` | `/refresh` | Remote sessions: refetch; returns `{ status: "updated" \| "unchanged", fetchedAt }` or `502 { error }`. Optional `{ url }` body replaces the in-memory URL if it is the same source (token-stripped match), else `400` |
+
+---
+
+## Remote sources
+
+`concurly open <url>` fetches the page into a durable review folder and then treats the cached copy as an ordinary local file (server, watcher and store are unchanged).
+
+```
+~/.concurly/reviews/<sha1(identityUrl)[0:12]>/     # override root with CONCURLY_HOME
+  <name>.html            cached copy (name = URL basename)
+  <name>.comments.json   comments (same convention as local files)
+  source.json            { sourceUrl, fetchedAt, sha256 }
+```
+
+- **Identity URL** = normalized URL with the `?token=` param removed (`stripSecrets()`). It is what is hashed, persisted, printed, and shown in the UI. Rotating tokens therefore map to the same folder and comment history.
+- GitHub `blob/` links are rewritten to `raw.githubusercontent.com` (`normalizeUrl()`).
+- **concurly adds no credentials** (no `gh`, no `GITHUB_TOKEN`). The only auth is whatever is already in the URL. An expired link fails with a "use a fresh Raw link" error; the cached copy and comments are kept.
+- The full URL (with token) lives only in the running server's memory (`RemoteSource` in `cli.ts` → `server.ts`). After a restart, run `concurly open <fresh-url>`; a live session can be recovered with `concurly open|refresh <fresh-url>`.
+- Refresh writes the cached HTML only when its sha256 changed; the existing chokidar watcher then sends `{ type: "reload" }`.
+- A 40-hex commit SHA in the ref (`isPinnedUrl`) means content can't change: the UI shows "pinned to commit" instead of a Refresh button.
+- Env vars (mainly for tests): `CONCURLY_HOME` (root for `~/.concurly`), `CONCURLY_NO_BROWSER` (skip launching a browser).
 
 ---
 
@@ -198,7 +227,8 @@ cp -r skills/concurly ~/.claude/skills/concurly
 
 | Skill command | What it does |
 |---------------|--------------|
-| `/concurly open <file.html>` | Opens file in browser with overlay |
+| `/concurly open <file.html \| url>` | Opens file or remote HTML URL in browser with overlay |
+| `/concurly refresh [port\|url]` | Refetches a remote page (a fresh `?token=` URL replaces an expired link) |
 | `/concurly list` | Lists running instances |
 | `/concurly review [port\|path]` | Reads open comments, applies fixes, resolves each |
 | `/concurly complete <port\|path>` | Says "we concur 🤝", stops session, preserves comments |
@@ -213,6 +243,7 @@ cp -r skills/concurly ~/.claude/skills/concurly
 - **CSS class/ID prefix** — all injected DOM uses `__dr-` prefix to avoid colliding with the reviewed page
 - **Windows paths** — always use `path.resolve()` / `path.join()`; never string-concatenate with `/`
 - **`open` package** — must be imported via dynamic `import()` because it is ESM-only in v9
+- **Never persist or print a URL containing `?token=`** — always go through `stripSecrets()`; the full URL stays in memory only
 
 ---
 
