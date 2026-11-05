@@ -1,6 +1,6 @@
 {
   "name": "concurly",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Review software architecture concurrently with an expert AI peer.",
   "main": "dist/cli.js",
   "bin": {

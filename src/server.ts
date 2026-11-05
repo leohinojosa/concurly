@@ -21,6 +21,7 @@ import {
   RemoteError,
   stripSecrets,
 } from "./remote";
+import { isValidTheme, readPrefs, writePrefs } from "./prefs";
 
 /** Mutable holder so a fresh `?token=` URL can replace an expired one at runtime. */
 export interface RemoteSource {
@@ -149,6 +150,19 @@ export function createServer(htmlPath: string, clientScriptPath: string, source?
     } catch (err) {
       res.status(err instanceof RemoteError ? 502 : 400).json({ error: (err as Error).message });
     }
+  });
+
+  app.get("/preferences", (_req, res) => {
+    res.json(readPrefs());
+  });
+
+  app.put("/preferences", (req, res) => {
+    const { theme } = (req.body ?? {}) as { theme?: unknown };
+    if (!isValidTheme(theme)) {
+      res.status(400).json({ error: "theme must match [a-z0-9-]{1,32}" });
+      return;
+    }
+    res.json(writePrefs({ theme }));
   });
 
   return app;

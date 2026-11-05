@@ -15,6 +15,7 @@ import {
   stripSecrets,
 } from "./remote";
 import type { RemoteSource } from "./server";
+import themeData from "./themes.json";
 
 // One JSON file per running instance, keyed by port number.
 const STATE_DIR = path.join(os.tmpdir(), "concurly-instances");
@@ -189,6 +190,8 @@ async function cmdOpen(args: string[]): Promise<void> {
   const portedScript = clientScript
     .replace('"__PORT__"', String(port))
     .replace('"__FILE_PATH__"', JSON.stringify(htmlPath))
+    // Function replacer: a `$` in the data can never be read as a replacement pattern.
+    .replace('"__THEMES__"', () => JSON.stringify(themeData))
     .replace("__VERSION__", version);
 
   // Per-instance temp file so parallel sessions don't overwrite each other.
