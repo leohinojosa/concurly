@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import fs from "fs";
-import os from "os";
 import path from "path";
+import { concurlyHome } from "./paths";
 
 export const MAX_BYTES = 20 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 15_000;
@@ -60,8 +60,7 @@ export function isPinnedUrl(url: string): boolean {
 }
 
 export function reviewsRoot(): string {
-  const home = process.env.CONCURLY_HOME ?? path.join(os.homedir(), ".concurly");
-  return path.join(home, "reviews");
+  return path.join(concurlyHome(), "reviews");
 }
 
 export function reviewDir(identityUrl: string): string {
