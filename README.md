@@ -65,6 +65,7 @@ concurly open https://github.com/org/repo/blob/main/docs/design.html   # blob li
 | Action | What happens |
 |---|---|
 | **Read \| Review** toggle (header) | Read mode (default) disables commenting and hides badges; Review mode enables it |
+| **↻ Refresh** (header, next to the toggle) | Local file: reloads the page. Remote page: refetches it from the source (comments are kept) |
 | Hover any element (Review mode) | Faint indigo outline (no comments) or bright indigo outline (has comments) |
 | Click an element with no comments (Review mode) | Opens a comment box to leave a note |
 | Click an element with comments (Review mode) | Opens the sidebar scrolled to that thread |

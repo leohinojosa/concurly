@@ -147,7 +147,8 @@ interface Comment {
 - **concurly adds no credentials** (no `gh`, no `GITHUB_TOKEN`). The only auth is whatever is already in the URL. An expired link fails with a "use a fresh Raw link" error; the cached copy and comments are kept.
 - The full URL (with token) lives only in the running server's memory (`RemoteSource` in `cli.ts` → `server.ts`). After a restart, run `concurly open <fresh-url>`; a live session can be recovered with `concurly open|refresh <fresh-url>`.
 - Refresh writes the cached HTML only when its sha256 changed; the existing chokidar watcher then sends `{ type: "reload" }`.
-- A 40-hex commit SHA in the ref (`isPinnedUrl`) means content can't change: the UI shows "pinned to commit" instead of a Refresh button.
+- The header always has a standalone `#__dr-header-refresh__` button right after the Read | Review toggle (created in `injectHeader()`; default = `location.reload()`). `initRemoteControls()` re-points its `onclick` to `POST /refresh` for non-pinned remote sessions and adds the "fetched Xm ago" label and status text after it.
+- A 40-hex commit SHA in the ref (`isPinnedUrl`) means content can't change: the UI shows "pinned to commit" and the button stays a plain page reload.
 - Env vars (mainly for tests): `CONCURLY_HOME` (root for `~/.concurly`), `CONCURLY_NO_BROWSER` (skip launching a browser).
 
 ---

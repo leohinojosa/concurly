@@ -207,9 +207,11 @@
       }
       #__dr-header-fetched__, #__dr-header-pinned__ { color: #71717a; font-size: 11px; }
       #__dr-header-refresh__ {
-        background: #27272a; color: #e4e4e7; border: 1px solid #3f3f46;
-        border-radius: 5px; padding: 3px 10px; font-size: 12px;
-        font-family: inherit; cursor: pointer;
+        flex-shrink: 0; margin-left: 8px;
+        background: #27272a; color: #e4e4e7; border: none;
+        border-radius: 6px; padding: 5px 10px; line-height: 1;
+        font-family: system-ui, sans-serif; font-size: 11px; font-weight: 600;
+        cursor: pointer; transition: background 0.15s;
       }
       #__dr-header-refresh__:hover:not(:disabled) { background: #3f3f46; }
       #__dr-header-refresh__:disabled { opacity: 0.6; cursor: default; }
@@ -370,7 +372,16 @@
     header.appendChild(sep);
     header.appendChild(filename);
     header.appendChild(filepath);
+    // Standalone refresh, next to the other tools. Reloads the page (re-reads the
+    // file from disk); remote sessions swap this for a refetch in initRemoteControls().
+    const refreshBtn = document.createElement("button");
+    refreshBtn.id = "__dr-header-refresh__";
+    refreshBtn.textContent = "↻ Refresh";
+    refreshBtn.title = "Reload page";
+    refreshBtn.onclick = () => window.location.reload();
+
     header.appendChild(toggle);
+    header.appendChild(refreshBtn);
     header.appendChild(version);
     header.appendChild(ghLink);
 
@@ -427,14 +438,14 @@
       pinned.textContent = "pinned to commit";
       wrap.appendChild(pinned);
     } else {
-      const btn = document.createElement("button");
-      btn.id = "__dr-header-refresh__";
-      btn.textContent = "↻ Refresh";
+      // Reuse the standalone button from injectHeader(): refetch instead of reload.
+      const btn = document.getElementById("__dr-header-refresh__");
+      btn.title = "Refetch from source";
 
       const status = document.createElement("span");
       status.id = "__dr-header-refresh-status__";
 
-      btn.addEventListener("click", async () => {
+      btn.onclick = async () => {
         btn.disabled = true;
         status.className = "";
         status.textContent = "Refetching…";
@@ -454,9 +465,8 @@
         } finally {
           btn.disabled = false;
         }
-      });
+      };
 
-      wrap.appendChild(btn);
       wrap.appendChild(status);
     }
 
