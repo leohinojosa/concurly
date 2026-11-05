@@ -181,6 +181,11 @@
       .__dr-mode-btn__:hover { color: #e4e4e7; }
       .__dr-mode-btn--active__ { background: #6366f1; color: #fff; }
       .__dr-mode-btn--active__:hover { background: #4f46e5; color: #fff; }
+      /* Read mode: hide badges and thread-card mutation actions */
+      body:not(.__dr-mode-review__) .__dr-badge__ { display: none !important; }
+      body:not(.__dr-mode-review__) .__dr-edit-btn__,
+      body:not(.__dr-mode-review__) .__dr-resolve-btn__,
+      body:not(.__dr-mode-review__) .__dr-delete-btn__ { display: none !important; }
       #__dr-header-version__ {
         margin-left: 12px; flex-shrink: 0;
         color: #52525b; font-size: 11px;
