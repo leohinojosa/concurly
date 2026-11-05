@@ -66,7 +66,8 @@ concurly open https://github.com/org/repo/blob/main/docs/design.html   # blob li
 |---|---|
 | **Read \| Review** toggle (header) | Read mode (default) disables commenting and hides badges; Review mode enables it |
 | **↻** refresh icon (header, next to the toggle; tooltip "Refresh") | Local file: reloads the page. Remote page: refetches it from the source (comments are kept) |
-| Hover any element (Review mode) | Faint indigo outline (no comments) or bright indigo outline (has comments) |
+| **Theme** button (header, right of ↻; tooltip "Theme") | Opens the theme menu — see [Themes](#themes) |
+| Hover any element (Review mode) | Faint accent-colored outline (no comments) or bright outline (has comments) |
 | Click an element with no comments (Review mode) | Opens a comment box to leave a note |
 | Click an element with comments (Review mode) | Opens the sidebar scrolled to that thread |
 | **↳ Show in page** | Scrolls to the element and pulses it yellow |
@@ -75,6 +76,21 @@ concurly open https://github.com/org/repo/blob/main/docs/design.html   # blob li
 | **✕ Delete** | Permanently removes the comment |
 | Sidebar toggle (✕ / ▶) | Collapses or expands the sidebar; it starts collapsed on every page load, expands when you switch to Review, and collapses when you switch to Read |
 | Show resolved checkbox | Displays resolved comments greyed out below open ones |
+
+### Themes
+
+Click the palette button in the header (right of ↻) to pick a theme. **Hover** a theme to preview it live; **click** to keep it. `Esc`, clicking elsewhere, or `Tab` closes the menu and reverts the preview; the arrow keys move through the list.
+
+| | Light | Dark |
+|---|---|---|
+| | **Paper** — warm editorial, serif headings | **Midnight** — modern, frosted sidebar, violet glow |
+| | **Slate** — cool, crisp, neutral blue | **Nord** — frosty blue-grey |
+| | **Mint** — fresh, soft green | **Ember** — warm charcoal and amber |
+| | | **Terminal** — near-black, monospace, green |
+
+- Until you choose, concurly follows your system's light/dark setting (Paper in light mode, Midnight in dark mode) and updates live if that setting changes.
+- Your choice is remembered in the browser **and** in `~/.concurly/preferences.json`, so it carries across sessions and across ports (every concurly session runs on its own port, and browsers don't share storage between ports).
+- Every theme is checked for readable contrast (WCAG AA) as part of the test suite.
 
 ---
 

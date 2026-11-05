@@ -18,6 +18,9 @@ concurly/
 │   ├── store.ts      ← Synchronous read/write of the comments JSON file
 │   ├── watcher.ts    ← chokidar file watcher; pushes WebSocket messages on change
 │   ├── remote.ts     ← Remote URL support: normalize, strip ?token=, review-folder cache layout, fetchRemote
+│   ├── prefs.ts      ← User preferences (~/.concurly/preferences.json): read, validate, merge, atomic write
+│   ├── paths.ts      ← concurlyHome(): CONCURLY_HOME or ~/.concurly
+│   ├── themes.json   ← The 7 themes as data (54 tokens each); injected into client.js at inject time
 │   └── client.js     ← Vanilla JS IIFE injected into the served HTML page (NOT TypeScript)
 ├── test/             ← node:test suites (run against dist/); `npm test` builds then runs them
 ├── dist/             ← Compiled output (tsc). client.js is copied here by postbuild.
@@ -128,6 +131,20 @@ interface Comment {
 | `DELETE` | `/comments/:id` | Deletes comment (open comments only) |
 | `GET` | `/source` | Remote sessions: `{ sourceUrl, fetchedAt, isPinned }`. `404` for local files |
 | `POST` | `/refresh` | Remote sessions: refetch; returns `{ status: "updated" \| "unchanged", fetchedAt }` or `502 { error }`. Optional `{ url }` body replaces the in-memory URL if it is the same source (token-stripped match), else `400` |
+| `GET` | `/preferences` | Returns `{ theme?: string }` from `~/.concurly/preferences.json` (`{}` if none or unreadable) |
+| `PUT` | `/preferences` | Body `{ theme }`; `theme` must match `^[a-z0-9-]{1,32}$` else `400`. Merged into the stored object (atomic write) |
+
+---
+
+## Themes
+
+The UI has seven themes: **Paper**, **Midnight** (the two defaults), **Slate**, **Mint**, **Nord**, **Ember**, **Terminal**. A palette button in the header (right after ↻) opens a menu grouped Light / Dark: hovering a row previews it live, clicking keeps it, Esc / outside click / Tab / resize revert.
+
+- **Data, not code.** Each theme is an entry in `src/themes.json`: `id`, `label`, `mode` (`light`|`dark`), two structural archetypes — `tabs` (`underline`|`pill`) and `cards` (`ruled`|`boxed`) — and `vars`, a flat map of 54 tokens. `cli.ts` injects the whole file into `client.js` via the `"__THEMES__"` placeholder.
+- **Tokens → CSS.** `client.js` emits `html[data-dr-theme="<id>"]{ --dr-<token>: … }` for every theme and one token-driven stylesheet (`BASE_CSS`). Archetypes are `data-dr-tabs` / `data-dr-cards` attributes on `<html>`. The `--dr-` prefix keeps our variables off the reviewed page, and `color-scheme` is set only on concurly's own containers (never `<html>`).
+- **No hard-coded colors in `client.js`.** Use `var(--dr-*)`. The only intentional literals are the yellow "Show in page" pulse and the swatch outline.
+- **Persistence & resolution.** On load: `localStorage["concurly-theme"]` (sync, no flash) → else the OS (`prefers-color-scheme`: Midnight dark / Paper light). Right after, `GET /preferences` is authoritative: a different server theme is applied and re-cached; if the server has none but the browser does, it is seeded with `PUT`. Choosing a theme writes `localStorage` and `PUT /preferences`. With no saved choice the theme follows the OS live. **Why the server file:** every session runs on its own port, and browsers treat each port as a separate origin, so `localStorage` alone is not shared between sessions.
+- **Adding or changing a theme.** Edit `src/themes.json`; every theme must define the same token set. `npm test` (`test/themes.test.js`) enforces identical token sets and **WCAG AA (4.5:1)** for every text/background pair (translucent colors are composited over the theme `bg`) — a theme that is unreadable fails the build. `accent-text` is the accent used *as text*; it can differ from `accent` (e.g. Midnight) when the accent is too dark/light to read.
 
 ---
 
@@ -147,7 +164,7 @@ interface Comment {
 - **concurly adds no credentials** (no `gh`, no `GITHUB_TOKEN`). The only auth is whatever is already in the URL. An expired link fails with a "use a fresh Raw link" error; the cached copy and comments are kept.
 - The full URL (with token) lives only in the running server's memory (`RemoteSource` in `cli.ts` → `server.ts`). After a restart, run `concurly open <fresh-url>`; a live session can be recovered with `concurly open|refresh <fresh-url>`.
 - Refresh writes the cached HTML only when its sha256 changed; the existing chokidar watcher then sends `{ type: "reload" }`.
-- The header always has a standalone `#__dr-header-refresh__` button right after the Read | Review toggle (created in `injectHeader()`; default = `location.reload()`). `initRemoteControls()` re-points its `onclick` to `POST /refresh` for non-pinned remote sessions and adds the "fetched Xm ago" label and status text after it.
+- The header always has a standalone `#__dr-header-refresh__` button right after the Read | Review toggle (the theme button follows it) (created in `injectHeader()`; default = `location.reload()`). `initRemoteControls()` re-points its `onclick` to `POST /refresh` for non-pinned remote sessions and adds the "fetched Xm ago" label and status text after it.
 - A 40-hex commit SHA in the ref (`isPinnedUrl`) means content can't change: the UI shows "pinned to commit" and the button stays a plain page reload.
 - Env vars (mainly for tests): `CONCURLY_HOME` (root for `~/.concurly`), `CONCURLY_NO_BROWSER` (skip launching a browser).
 
@@ -168,11 +185,12 @@ The browser client auto-reconnects after 2 seconds if the WebSocket closes.
 
 ## Client Script (`src/client.js`)
 
-Plain JS IIFE — **no TypeScript, no imports, no bundler**. Read from disk and injected as a raw `<script>` tag. Three placeholders are replaced at inject time:
+Plain JS IIFE — **no TypeScript, no imports, no bundler**. Read from disk and injected as a raw `<script>` tag. Four placeholders are replaced at inject time:
 
 - `"__PORT__"` → actual port number (string replacement in `cli.ts`)
 - `"__FILE_PATH__"` → absolute path to the HTML file being served
-- `"__VERSION__"` → version string read from `package.json` (e.g. `0.3.0`)
+- `"__THEMES__"` → the contents of `src/themes.json` (replaced with a function replacer so `$` in the data is never treated as a replacement pattern)
+- `"__VERSION__"` → version string read from `package.json` (e.g. `0.6.0`)
 
 Per-instance temp file: `%TEMP%/concurly-client-<port>.js` — prevents parallel sessions from overwriting each other's injected scripts.
 
@@ -182,12 +200,13 @@ Per-instance temp file: `%TEMP%/concurly-client-<port>.js` — prevents parallel
 |---------|-----|---------|----------|
 | Comment input box | `#__docreview__` | 999999 | Fixed, near click coords |
 | Sidebar | `#__dr-sidebar__` | 999995 | Fixed, right edge |
-| Tab bar | `#__dr-tabs__` | 999994 | Fixed, `top: 45px` |
+| Theme menu | `#__dr-theme-menu__` | 999998 | Fixed, under the theme button, right-aligned |
+| Tab bar | `#__dr-tabs__` | 999994 | Fixed, `top: 0` (pill style: `top: 7px`), centered over the header |
 | Header bar | `#__dr-header__` | 999993 | Fixed, `top: 0` |
-| History panel | `#__dr-history-panel__` | 999991 | Fixed, `top: 85px`, full-screen |
+| History panel | `#__dr-history-panel__` | 999991 | Fixed, `top: 44px`, full-screen |
 | Badges | `.__dr-badge__` | 999990 | Fixed, near annotated elements |
 
-**Chrome height**: header (45px) + tab bar (40px) = **85px**. Body gets `padding-top: 85px !important` to prevent content from being hidden under the chrome.
+**Chrome height**: a single header bar of **44px** (`CHROME_H`); the tab bar is a separate element centered over it, not a second row. Body gets `padding-top: 44px !important`, and the sidebar and history panel start at `top: 44px`. Below 1100px the source path and "fetched" label hide, and below 860px the file name and version hide too, so the centered tabs never collide with header content.
 
 ### Module-level state in client.js
 
@@ -242,6 +261,7 @@ mkdir -p ~/.claude/skills/concurly && cp -r skills/concurly/. ~/.claude/skills/c
 - **Never delete comments JSON** — it is historical record, preserved across `complete` calls
 - **One process per file** — `cmdOpen` reuses an existing live instance for the same file path
 - **client.js is plain JS** — do not add TypeScript syntax, imports, or `require()` calls to it
+- **No hard-coded colors in client.js** — style with `var(--dr-*)` theme tokens (add new tokens to *every* theme in `src/themes.json`; the tests enforce it)
 - **CSS class/ID prefix** — all injected DOM uses `__dr-` prefix to avoid colliding with the reviewed page
 - **Windows paths** — always use `path.resolve()` / `path.join()`; never string-concatenate with `/`
 - **`open` package** — must be imported via dynamic `import()` because it is ESM-only in v9
