@@ -166,12 +166,20 @@ let openCommentsBySelector = {}; // { [selector]: Comment[] } — open comments 
 let hoveredEl = null;            // currently highlighted DOM element
 let scrollTimer = null;          // debounce for badge repositioning on scroll
 let activeTab = "review";        // "review" | "history" — controls event guard and panel visibility
+let mode = "read";               // "read" | "review" — read mode disables commenting; badges and card edit/resolve/delete hidden via body class __dr-mode-review__
 ```
 
 ### Tab behavior
 
 - **Review tab** (default): shows HTML with sidebar, hover highlights, badges, click-to-comment
 - **View All Comments tab**: shows full-page history panel; sidebar hidden, badges cleared, click/hover handlers disabled via `activeTab` guard
+
+### Mode behavior
+
+- A **Read | Review** toggle lives in the header. Default is **Read** on every page load (not persisted).
+- **Read mode**: no hover highlights or click-to-comment; badges and the Edit/Resolve/Delete card actions are hidden via CSS keyed off the `__dr-mode-review__` body class. "Show in page" stays available.
+- **Review mode**: full commenting behavior.
+- The sidebar always starts collapsed on page load; its state is not stored in `sessionStorage`.
 
 ---
 
