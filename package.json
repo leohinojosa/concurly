@@ -10,7 +10,8 @@
     "build": "tsc",
     "postbuild": "copy src\\client.js dist\\client.js",
     "dev": "tsc --watch",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "test": "npm run build && node --test test/"
   },
   "dependencies": {
     "chokidar": "^5.0.0",
