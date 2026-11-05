@@ -45,7 +45,7 @@ Steps:
      - **✓ Resolve** — marks the comment resolved and removes it from the sidebar
      - **✕ Delete** — permanently removes the comment (only available while open/unresolved)
    - In Review mode, click a commented element to open the sidebar focused on that thread
-   - Collapse/expand the sidebar with the ← / → icon button on the right edge; the sidebar starts collapsed on every page load
+   - Collapse/expand the sidebar with the ← / → icon button on the right edge; the sidebar starts collapsed on every page load, expands when the user switches to Review mode, and collapses when they switch to Read mode
 3. Remind them to say "review ready" or run `/concurly review` when ready for you to address the comments
 
 ## /concurly list

@@ -57,7 +57,7 @@ This starts a local server on the next available port, opens the file in your br
 | **✎ Edit** | Opens an inline textarea to update the comment |
 | **✓ Resolve** | Marks the comment resolved |
 | **✕ Delete** | Permanently removes the comment |
-| Sidebar toggle (✕ / ▶) | Collapses or expands the sidebar; it starts collapsed on every page load |
+| Sidebar toggle (✕ / ▶) | Collapses or expands the sidebar; it starts collapsed on every page load, expands when you switch to Review, and collapses when you switch to Read |
 | Show resolved checkbox | Displays resolved comments greyed out below open ones |
 
 ---

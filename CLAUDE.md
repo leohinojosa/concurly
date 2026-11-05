@@ -180,6 +180,7 @@ let mode = "read";               // "read" | "review" — read mode disables com
 - **Read mode**: no hover highlights or click-to-comment; badges and the Edit/Resolve/Delete card actions are hidden via CSS keyed off the `__dr-mode-review__` body class. "Show in page" stays available.
 - **Review mode**: full commenting behavior.
 - The sidebar always starts collapsed on page load; its state is not stored in `sessionStorage`.
+- Clicking **Review** expands the sidebar; clicking **Read** collapses it (the collapse icon still toggles it manually in either mode).
 
 ---
 

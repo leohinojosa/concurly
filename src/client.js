@@ -564,6 +564,10 @@
     if (readBtn) readBtn.classList.toggle("__dr-mode-btn--active__", mode === "read");
     if (reviewBtn) reviewBtn.classList.toggle("__dr-mode-btn--active__", mode === "review");
 
+    // Review expands the sidebar; Read collapses it
+    const sidebar = document.getElementById("__dr-sidebar__");
+    if (sidebar) sidebar.classList.toggle("collapsed", mode === "read");
+
     if (mode === "read") {
       const box = document.getElementById("__docreview__");
       if (box) box.remove();
