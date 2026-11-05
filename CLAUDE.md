@@ -218,10 +218,11 @@ let mode = "read";               // "read" | "review" — read mode disables com
 
 ```powershell
 # Windows
-Copy-Item -Recurse -Force skills\concurly $HOME\.claude\skills\concurly
+New-Item -ItemType Directory -Force $HOME\.claude\skills\concurly | Out-Null
+Copy-Item skills\concurly\* $HOME\.claude\skills\concurly\ -Recurse -Force
 
 # macOS / Linux
-cp -r skills/concurly ~/.claude/skills/concurly
+mkdir -p ~/.claude/skills/concurly && cp -r skills/concurly/. ~/.claude/skills/concurly/
 ```
 
 ### Skill commands
