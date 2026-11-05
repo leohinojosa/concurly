@@ -36,16 +36,16 @@ Steps:
 1. Run `concurly open <path>` in the shell **as a background process** (`run_in_background: true` on the Bash tool) so the server starts without blocking the agent
 2. Tell the user the browser has opened with a dark header bar at the top showing the app
    name ("concurly"), the filename, and the full file path. They can also:
-   - Click any element to leave a comment
-   - Hover over elements to highlight them (brighter indigo outline = element has open comments; faint outline = no comments)
+   - Switch the header toggle from Read (default) to Review, then click any element to leave a comment
+   - In Review mode, hover over elements to highlight them (brighter indigo outline = element has open comments; faint outline = no comments)
    - Use the sidebar panel (right edge) to see all open comment threads
    - Each thread card shows the selector, excerpt, and comment body with four actions:
      - **↳ Show in page** — scrolls to the element and briefly highlights it yellow
      - **✎ Edit** — opens an inline textarea to update the comment body; Save or Cancel
      - **✓ Resolve** — marks the comment resolved and removes it from the sidebar
      - **✕ Delete** — permanently removes the comment (only available while open/unresolved)
-   - Click a commented element to open the sidebar focused on that thread
-   - Collapse/expand the sidebar with the ← / → icon button on the right edge; state is remembered per browser tab
+   - In Review mode, click a commented element to open the sidebar focused on that thread
+   - Collapse/expand the sidebar with the ← / → icon button on the right edge; the sidebar starts collapsed on every page load, expands when the user switches to Review mode, and collapses when they switch to Read mode
 3. Remind them to say "review ready" or run `/concurly review` when ready for you to address the comments
 
 ## /concurly list

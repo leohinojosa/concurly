@@ -49,14 +49,15 @@ This starts a local server on the next available port, opens the file in your br
 
 | Action | What happens |
 |---|---|
-| Hover any element | Faint indigo outline (no comments) or bright indigo outline (has comments) |
-| Click an element with no comments | Opens a comment box to leave a note |
-| Click an element with comments | Opens the sidebar scrolled to that thread |
+| **Read \| Review** toggle (header) | Read mode (default) disables commenting and hides badges; Review mode enables it |
+| Hover any element (Review mode) | Faint indigo outline (no comments) or bright indigo outline (has comments) |
+| Click an element with no comments (Review mode) | Opens a comment box to leave a note |
+| Click an element with comments (Review mode) | Opens the sidebar scrolled to that thread |
 | **↳ Show in page** | Scrolls to the element and pulses it yellow |
 | **✎ Edit** | Opens an inline textarea to update the comment |
 | **✓ Resolve** | Marks the comment resolved |
 | **✕ Delete** | Permanently removes the comment |
-| Sidebar toggle (✕ / ▶) | Collapses or expands the sidebar; state is remembered per tab |
+| Sidebar toggle (✕ / ▶) | Collapses or expands the sidebar; it starts collapsed on every page load, expands when you switch to Review, and collapses when you switch to Read |
 | Show resolved checkbox | Displays resolved comments greyed out below open ones |
 
 ---
@@ -162,7 +163,7 @@ Stops a specific review session. Comments are preserved.
 
 1. **Open the file** — run `/concurly open path/to/design.html` in Claude Code. The browser opens with the overlay.
 
-2. **Leave comments** — click any element and describe the change you want. Repeat for all feedback.
+2. **Leave comments** — switch to Review mode in the header, then click any element and describe the change you want. Repeat for all feedback.
 
 3. **Start the review** — run `/concurly review`. Claude reads every open comment, edits the HTML file, and resolves each comment when done.
 

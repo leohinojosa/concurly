@@ -7,6 +7,7 @@
   let hoveredEl = null;
   let scrollTimer = null;
   let activeTab = "review"; // "review" | "history"
+  let mode = "read"; // "read" | "review" — read mode disables commenting
 
   // Source: src/icons/window-collapse-left.svg
   const COLLAPSE_ICON_SVG = `<svg viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m.5 12.5v-10c0-1.1045695.8954305-2 2-2h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2z"/><path d="m2.5 12.5v-10c0-1.1045695.8954305-2 2-2h-2c-1 0-2 .8954305-2 2v10c0 1.1045695 1 2 2 2h2c-1.1045695 0-2-.8954305-2-2z" fill="currentColor"/><path d="m7.5 10.5-3-3 3-3"/><path d="m12.5 7.5h-8"/></g></svg>`;
@@ -162,13 +163,34 @@
         font-size: 13px; letter-spacing: 0.05em; flex-shrink: 0;
       }
       #__dr-header-sep__ { color: #52525b; flex-shrink: 0; }
-      #__dr-header-filename__ { color: #f4f4f5; font-weight: 600; flex-shrink: 0; }
+      #__dr-header-filename__ {
+        color: #f4f4f5; font-weight: 600;
+        flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+      }
       #__dr-header-path__ {
         color: #71717a; font-size: 11px;
         overflow: hidden; text-overflow: ellipsis; min-width: 0;
       }
-      #__dr-header-version__ {
+      #__dr-mode-toggle__ {
         margin-left: auto; flex-shrink: 0;
+        display: flex; background: #27272a; border-radius: 6px; padding: 2px;
+      }
+      .__dr-mode-btn__ {
+        border: none; cursor: pointer; background: none; color: #a1a1aa;
+        font-family: system-ui, sans-serif; font-size: 11px; font-weight: 600;
+        padding: 3px 10px; border-radius: 4px;
+        transition: color 0.15s, background 0.15s;
+      }
+      .__dr-mode-btn__:hover { color: #e4e4e7; }
+      .__dr-mode-btn--active__ { background: #6366f1; color: #fff; }
+      .__dr-mode-btn--active__:hover { background: #4f46e5; color: #fff; }
+      /* Read mode: hide badges and thread-card mutation actions */
+      body:not(.__dr-mode-review__) .__dr-badge__ { display: none !important; }
+      body:not(.__dr-mode-review__) .__dr-edit-btn__,
+      body:not(.__dr-mode-review__) .__dr-resolve-btn__,
+      body:not(.__dr-mode-review__) .__dr-delete-btn__ { display: none !important; }
+      #__dr-header-version__ {
+        margin-left: 12px; flex-shrink: 0;
         color: #52525b; font-size: 11px;
       }
       #__dr-header-github__ {
@@ -304,6 +326,17 @@
     filepath.textContent = FILE_PATH;
     filepath.title = FILE_PATH;
 
+    const toggle = document.createElement("div");
+    toggle.id = "__dr-mode-toggle__";
+    [["read", "Read"], ["review", "Review"]].forEach(([value, label]) => {
+      const btn = document.createElement("button");
+      btn.id = `__dr-mode-${value}__`;
+      btn.className = "__dr-mode-btn__" + (value === mode ? " __dr-mode-btn--active__" : "");
+      btn.textContent = label;
+      btn.addEventListener("click", () => setMode(value));
+      toggle.appendChild(btn);
+    });
+
     const version = document.createElement("span");
     version.id = "__dr-header-version__";
     version.textContent = "v__VERSION__";
@@ -320,6 +353,7 @@
     header.appendChild(sep);
     header.appendChild(filename);
     header.appendChild(filepath);
+    header.appendChild(toggle);
     header.appendChild(version);
     header.appendChild(ghLink);
 
@@ -520,6 +554,32 @@
     }
   }
 
+  // ─── Mode switching (read / review) ───────────────────────────────────────
+  function setMode(next) {
+    mode = next;
+    document.body.classList.toggle("__dr-mode-review__", mode === "review");
+
+    const readBtn = document.getElementById("__dr-mode-read__");
+    const reviewBtn = document.getElementById("__dr-mode-review__");
+    if (readBtn) readBtn.classList.toggle("__dr-mode-btn--active__", mode === "read");
+    if (reviewBtn) reviewBtn.classList.toggle("__dr-mode-btn--active__", mode === "review");
+
+    // Review expands the sidebar; Read collapses it
+    const sidebar = document.getElementById("__dr-sidebar__");
+    if (sidebar) sidebar.classList.toggle("collapsed", mode === "read");
+
+    if (mode === "read") {
+      const box = document.getElementById("__docreview__");
+      if (box) box.remove();
+      // Cancel any in-progress inline edit so it can't be saved in read mode
+      document.querySelectorAll(".__dr-cancel-btn__").forEach((b) => b.click());
+      if (hoveredEl) {
+        hoveredEl.classList.remove("__dr-highlight__", "__dr-highlight--annotated__");
+        hoveredEl = null;
+      }
+    }
+  }
+
   // ─── Sidebar DOM ──────────────────────────────────────────────────────────
   function injectSidebar() {
     const sidebar = document.createElement("div");
@@ -573,11 +633,8 @@
 
     document.body.appendChild(sidebar);
 
-    // Restore collapsed state from session
-    const isOpen = sessionStorage.getItem("__dr_sidebar_open__") !== "false";
-    if (!isOpen) {
-      sidebar.classList.add("collapsed");
-    }
+    // Always start collapsed; the user expands it on demand
+    sidebar.classList.add("collapsed");
   }
 
   // ─── Sidebar open / collapse ──────────────────────────────────────────────
@@ -585,14 +642,12 @@
     const sidebar = document.getElementById("__dr-sidebar__");
     if (!sidebar) return;
     sidebar.classList.remove("collapsed");
-    sessionStorage.setItem("__dr_sidebar_open__", "true");
   }
 
   function toggleSidebar() {
     const sidebar = document.getElementById("__dr-sidebar__");
     if (!sidebar) return;
-    const isCollapsed = sidebar.classList.toggle("collapsed");
-    sessionStorage.setItem("__dr_sidebar_open__", String(!isCollapsed));
+    sidebar.classList.toggle("collapsed");
   }
 
   function scrollSidebarToSelector(selector) {
@@ -1005,7 +1060,7 @@
 
   // ─── Event handlers ───────────────────────────────────────────────────────
   document.addEventListener("click", (e) => {
-    if (activeTab !== "review") return;
+    if (activeTab !== "review" || mode !== "review") return;
     if (e.target.closest("#__docreview__")) return;
     if (e.target.closest("#__dr-sidebar__")) return;
     if (e.target.closest("#__dr-tabs__")) return;
@@ -1034,7 +1089,7 @@
   });
 
   document.addEventListener("mouseover", (e) => {
-    if (activeTab !== "review") return;
+    if (activeTab !== "review" || mode !== "review") return;
     if (e.target.closest("#__dr-sidebar__") || e.target.closest("#__docreview__")) return;
     if (e.target.closest("#__dr-tabs__") || e.target.closest("#__dr-header__")) return;
     if (hoveredEl) {
@@ -1050,7 +1105,7 @@
   });
 
   document.addEventListener("mouseout", () => {
-    if (activeTab !== "review") return;
+    if (activeTab !== "review" || mode !== "review") return;
     if (hoveredEl) {
       hoveredEl.classList.remove("__dr-highlight__");
       hoveredEl.classList.remove("__dr-highlight--annotated__");
