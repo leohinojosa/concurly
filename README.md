@@ -145,6 +145,16 @@ Remote HTML works too (see [Reviewing a remote page](#reviewing-a-remote-page)):
 /concurly open https://raw.githubusercontent.com/org/repo/main/docs/design.html?token=...
 ```
 
+**Finding a GitHub file by name** — if you have the [GitHub CLI](https://cli.github.com/) (`gh`) installed and logged in, the skill can locate the file for you and fetch it, including from private repos:
+
+```
+/concurly open design.html org/repo            # looks on the repo's default branch
+/concurly open design.html org/repo my-branch  # or a specific branch, tag, or commit
+/concurly open https://github.com/org/repo/blob/main/docs/design.html
+```
+
+If the name matches several files the skill asks which one; if it isn't on that branch it asks where to look. `gh` is only used by the skill to build the URL — the `concurly` CLI itself never needs it, and any URL you paste works without it.
+
 ### `/concurly refresh`
 
 Refetches a remote page in an active session; comments are kept.

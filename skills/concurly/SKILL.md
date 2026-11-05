@@ -13,6 +13,7 @@ Recognize these phrases and execute the corresponding command automatically — 
 | If the user says anything like… | Run this |
 |---|---|
 | "let's review the design", "open the design", "let's start a review", "let's review the architecture design", "let's review the architecture" | Check file type first; if `.html`, run `/concurly open`; if `.md` or `.txt`, proceed with standard review |
+| "open `<file>.html` from github", "review the `<name>` spec in `<repo>`", "open this github link", or a bare `.html` file name that isn't on disk | `/concurly open` — resolve the target first (see "Resolving the target") |
 | "review ready", "review the comments I left", "review the changes", "go ahead and review", "please review my comments" | `/concurly review` (only if concurly is already active) |
 | "we concur", "review is complete", "we're done", "that's all the comments", "all done reviewing" | `/concurly complete` (only if concurly is active) |
 
@@ -30,12 +31,41 @@ Before opening any file with concurly:
 
 Opens an HTML design file in the browser with the comment layer active. Each file gets its own server instance and port. If the file is already open, the existing session is reused.
 
-Usage: `/concurly open <path-to-file.html | url>`
+Usage: `/concurly open <path-to-file.html | url | github-file-name> [owner/repo] [ref]`
 
-If the user gives an `http(s)` URL (e.g. a GitHub raw link, with or without `?token=`), pass it through as-is — concurly fetches it into `~/.concurly/reviews/<hash>/` and reviews the cached copy. The URL only needs to serve HTML; it doesn't need a `.html` extension. Never echo a `?token=` back to the user or write it into files.
+### Resolving the target
+
+`concurly` itself only needs a local path or a URL — it never depends on the GitHub CLI. The `gh` steps below are **this skill's** convenience for turning a GitHub file name or link into a URL `concurly` can fetch. Work out which case applies:
+
+**A. A local path** → use it as-is.
+
+**B. An `http(s)` URL**
+- Already has a `?token=` or isn't a GitHub URL → pass it through as-is. `concurly` fetches it into `~/.concurly/reviews/<hash>/` and reviews the cached copy. The URL only needs to serve HTML; it doesn't need a `.html` extension.
+- A GitHub file URL without a token (`github.com/<o>/<r>/blob/<ref>/<path>` or `raw.githubusercontent.com/<o>/<r>/<ref>/<path>`) and `gh` is available → parse owner, repo, ref and path from it and mint a fetchable URL with step 4 below (this is what makes **private** repos work). If `gh` is unavailable, pass the URL as-is: it works for public repos, and a private one will fail with a "use a fresh Raw link" error — then ask the user for the Raw link from GitHub.
+
+**C. A bare file name or partial path that is not on disk** (e.g. `01-accounts-api-global-spec.html`) → needs `gh`:
+
+0. Check `gh auth status`. If `gh` is missing or not logged in, say so plainly — "I need the GitHub CLI (`gh`) to find a file by name; install/log in, or paste the file's GitHub or Raw URL" — and stop. Don't guess a URL.
+1. **Repo:** use the `owner/repo` the user gave; otherwise the current directory's repo (`gh repo view --json nameWithOwner --jq .nameWithOwner`); if neither applies, ask.
+2. **Ref:** use the branch, tag or commit SHA the user gave; otherwise the repo's default branch (`gh api repos/<owner>/<repo> --jq .default_branch`).
+3. **Find the path** with the git tree API (more reliable than `gh search code`, which can miss files):
+   ```
+   gh api "repos/<owner>/<repo>/git/trees/<ref>?recursive=1" --jq '{truncated, matches: [.tree[] | select(.type=="blob") | select((.path|ascii_downcase) == ("<name>"|ascii_downcase) or (.path|ascii_downcase|endswith("/" + ("<name>"|ascii_downcase)))) | .path]}'
+   ```
+   - `truncated: true` → the repo is too large to list; ask for the full path or a URL.
+   - **0 matches** → tell the user the file isn't on `<ref>` and ask which branch/commit it lives on (files often exist only on a PR branch). If the repo is the current directory's, you may retry once with the current branch (`git branch --show-current`) and say which ref you used. Never guess a different file.
+   - **1 match** → continue.
+   - **Several matches** → list them and ask which one.
+4. **Mint a fetchable URL** (URL-encode special characters in the path):
+   ```
+   gh api "repos/<owner>/<repo>/contents/<path>?ref=<ref>" --jq .download_url
+   ```
+   For a private repo this is a `raw.githubusercontent.com` URL with a short-lived `?token=`; for a public repo it is a plain raw URL.
+
+**Treat the minted URL as a secret.** Pass it to `concurly` (quoted), but never print it back to the user, paste it into a file, or put it in a commit. Refer to the file as `<owner>/<repo>:<path>@<ref>` instead.
 
 Steps:
-1. Run `concurly open <path-or-url>` in the shell **as a background process** (`run_in_background: true` on the Bash tool) so the server starts without blocking the agent
+1. Run `concurly open "<path-or-url>"` in the shell **as a background process** (`run_in_background: true` on the Bash tool) so the server starts without blocking the agent
 2. Tell the user the browser has opened with a dark header bar at the top showing the app
    name ("concurly"), the filename, and the full file path. They can also:
    - Switch the header toggle from Read (default) to Review, then click any element to leave a comment
@@ -59,7 +89,9 @@ Usage: `/concurly refresh [port|url]`
 Steps:
 1. Run `concurly refresh [port|url]` in the shell
 2. Report the result: "Updated", "No changes", or the error
-3. If it fails with "link expired or not accessible", ask the user for a fresh "Raw" link and run `concurly refresh <fresh-url>` (or `concurly open <fresh-url>`); this swaps the link in the live session without losing comments
+3. If it fails with "link expired or not accessible" (GitHub's `?token=` links are short-lived), get a fresh link and run `concurly refresh "<fresh-url>"` (or `concurly open "<fresh-url>"`); this swaps the link in the live session without losing comments:
+   - If `gh` is available and the session's `Source:` URL (from `concurly list`, or `sourceUrl` in `concurly review`) is a `raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>` URL, re-mint it yourself with step 4 of "Resolving the target". If the branch name contains `/` the ref/path split is ambiguous — ask the user for the ref.
+   - Otherwise ask the user for a fresh "Raw" link.
 
 Pages pinned to a commit SHA can't change, so refreshing them is never useful.
 

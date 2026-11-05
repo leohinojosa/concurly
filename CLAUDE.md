@@ -228,7 +228,7 @@ cp -r skills/concurly ~/.claude/skills/concurly
 
 | Skill command | What it does |
 |---------------|--------------|
-| `/concurly open <file.html \| url>` | Opens file or remote HTML URL in browser with overlay |
+| `/concurly open <file.html \| url \| github-file-name> [owner/repo] [ref]` | Opens file or remote HTML URL in browser with overlay. A bare GitHub file name is resolved by the **skill** via `gh` (tree API → contents API `download_url`) — the CLI never depends on `gh` |
 | `/concurly refresh [port\|url]` | Refetches a remote page (a fresh `?token=` URL replaces an expired link) |
 | `/concurly list` | Lists running instances |
 | `/concurly review [port\|path]` | Reads open comments, applies fixes, resolves each |
