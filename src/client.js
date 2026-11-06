@@ -437,6 +437,7 @@
       btn.id = `__dr-mode-${value}__`;
       btn.className = "__dr-mode-btn__" + (value === mode ? " __dr-mode-btn--active__" : "");
       btn.textContent = label;
+      btn.title = value === "read" ? "Read — press R to switch modes" : "Review — press R to switch modes, Esc to leave";
       btn.addEventListener("click", () => setMode(value));
       toggle.appendChild(btn);
     });
@@ -1368,10 +1369,47 @@
     }
   });
 
+  // ─── Keyboard shortcuts ───────────────────────────────────────────────────
+  //   R    toggles Read ⇄ Review
+  //   Esc  steps back one level: close the comment box → cancel an inline edit → leave Review
+  const NON_TEXT_INPUTS = ["checkbox", "radio", "button", "submit", "reset", "range", "color", "file", "image"];
+
+  /** True when the user is typing into something (our boxes or a field on the reviewed page). */
+  function isTextEntry(el) {
+    if (!el || el.nodeType !== 1) return false;
+    if (el.isContentEditable) return true;
+    if (el.tagName === "TEXTAREA" || el.tagName === "SELECT") return true;
+    return el.tagName === "INPUT" && !NON_TEXT_INPUTS.includes((el.type || "text").toLowerCase());
+  }
+
+  /** An unsaved comment box or inline edit is open — never switch modes underneath it. */
+  function hasDraft() {
+    return !!(document.getElementById("__docreview__") || document.querySelector(".__dr-edit-area__"));
+  }
+
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
+    // The reviewed page (and the theme menu, which handles keys in the capture phase) get first refusal.
+    if (e.defaultPrevented || e.isComposing) return;
+    const key = e.key || "";
+
+    if (key === "Escape") {
       const box = document.getElementById("__docreview__");
-      if (box) box.remove();
+      if (box) { box.remove(); return; } // 1. close the comment box
+
+      if (document.querySelector(".__dr-edit-area__")) { // 2. cancel the inline edit
+        const cancel = document.querySelector(".__dr-cancel-btn__");
+        if (cancel) cancel.click();
+        return;
+      }
+
+      if (mode === "review" && !isTextEntry(e.target)) setMode("read"); // 3. leave Review
+      return;
+    }
+
+    if (key.toLowerCase() === "r" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.repeat) {
+      if (isTextEntry(e.target) || hasDraft() || themeMenu) return;
+      e.preventDefault();
+      setMode(mode === "review" ? "read" : "review");
     }
   });
 
