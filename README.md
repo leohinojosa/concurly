@@ -64,7 +64,8 @@ concurly open https://github.com/org/repo/blob/main/docs/design.html   # blob li
 
 | Action | What happens |
 |---|---|
-| **Read \| Review** toggle (header) | Read mode (default) disables commenting and hides badges; Review mode enables it |
+| **Read \| Review** toggle (header), or press **R** | Read mode (default) disables commenting and hides badges; Review mode enables it |
+| **Esc** | Steps back one level: closes the comment box, then cancels an inline edit, then leaves Review mode |
 | **↻** refresh icon (header, next to the toggle; tooltip "Refresh") | Local file: reloads the page. Remote page: refetches it from the source (comments are kept) |
 | **Theme** button (header, right of ↻; tooltip "Theme") | Opens the theme menu — see [Themes](#themes) |
 | Hover any element (Review mode) | Faint accent-colored outline (no comments) or bright outline (has comments) |
@@ -76,6 +77,15 @@ concurly open https://github.com/org/repo/blob/main/docs/design.html   # blob li
 | **✕ Delete** | Permanently removes the comment |
 | Sidebar toggle (✕ / ▶) | Collapses or expands the sidebar; it starts collapsed on every page load, expands when you switch to Review, and collapses when you switch to Read |
 | Show resolved checkbox | Displays resolved comments greyed out below open ones |
+
+### Keyboard shortcuts
+
+| Key | What it does |
+|---|---|
+| **R** | Switches between Read and Review mode |
+| **Esc** | Steps back one level: close the comment box → cancel an inline edit → leave Review mode (when the theme menu is open, Esc closes that first) |
+
+`R` stays out of your way: it does nothing while you're typing in a comment, an edit box, or a form on the page you're reviewing, while a comment box or inline edit is open (so a half-written comment is never lost), while the theme menu is open, or if the page already handled the key. `Ctrl+R` (browser reload) and `Alt+R` are never intercepted.
 
 ### Themes
 
