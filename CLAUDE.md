@@ -231,6 +231,14 @@ let mode = "read";               // "read" | "review" — read mode disables com
 - The sidebar always starts collapsed on page load; its state is not stored in `sessionStorage`.
 - Clicking **Review** expands the sidebar; clicking **Read** collapses it (the collapse icon still toggles it manually in either mode).
 
+### Keyboard shortcuts
+
+One bubble-phase `keydown` listener at the bottom of `client.js` (`isTextEntry`, `hasDraft` helpers):
+
+- **`R`** (no Ctrl/Alt/Meta, not a repeat) calls `setMode` to toggle Read ⇄ Review. It is ignored when the event target is a text field (`input` types that take text, `textarea`, `select`, `contenteditable`), when a draft is open (`#__docreview__` or `.__dr-edit-area__` — `setMode("read")` would discard it), while the theme menu is open (`themeMenu`), and when `e.defaultPrevented` (the reviewed page handled the key first).
+- **`Esc`** steps back one level: close the comment box → cancel an inline edit (click its cancel button) → leave Review mode (only when focus is not in a text field). The theme menu's own capture-phase `Esc` handler runs first and stops propagation.
+- The Read/Review buttons carry tooltips naming the keys. Never intercept `Ctrl+R`/`Ctrl+E` or other browser-reserved combos.
+
 ---
 
 ## Skill Installation

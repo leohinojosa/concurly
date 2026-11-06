@@ -68,7 +68,7 @@ Steps:
 1. Run `concurly open "<path-or-url>"` in the shell **as a background process** (`run_in_background: true` on the Bash tool) so the server starts without blocking the agent
 2. Tell the user the browser has opened with a slim header bar at the top showing the app
    name ("concurly"), the filename, and the source path. They can also:
-   - Switch the header toggle from Read (default) to Review, then click any element to leave a comment
+   - Switch the header toggle from Read (default) to Review — or press **R** — then click any element to leave a comment. **Esc** steps back (closes the comment box, then leaves Review)
    - Click the palette button (right of the refresh ↻ button) to switch between 7 themes (Paper, Midnight, Slate, Mint, Nord, Ember, Terminal); hovering previews a theme and clicking keeps it. The choice is remembered across sessions. Until they choose, it follows their system light/dark setting
    - In Review mode, hover over elements to highlight them (brighter outline = element has open comments; faint outline = no comments)
    - Use the sidebar panel (right edge) to see all open comment threads
